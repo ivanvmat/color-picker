@@ -158,6 +158,14 @@ function ColorPickerControl(cfg) {
             },
             degreesToRadians: function(degrees) {
                 return degrees * (Math.PI / 180);
+            },
+            countDecimals: function (value) {
+                if(Math.floor(value.valueOf()) === value.valueOf()) return 0;
+                return value.toString().split(".")[1].length || 0; 
+            },
+            round: function(value, places) {
+                let res = Number(Math.round(value + 'e' + places) + 'e-' + places);
+                return !isNaN(res) ? res : 0;
             }
         },
         eventListeners = {
@@ -569,7 +577,7 @@ function ColorPickerControl(cfg) {
             }
         };
         // adding click outside control element event handler to mousedown event listener of document
-        document.body.addEventListener('mousedown', click_outside_control_handler);
+        //document.body.addEventListener('mousedown', click_outside_control_handler);
     
         // ..
         window_resize_handler = function(e){
@@ -768,7 +776,7 @@ function ColorPickerControl(cfg) {
      * @param {Number} alpha
      *  The alpha in the set [0, 255]
      */
-    function HSVaColor(h = 0, s = 0, v = 0, a = 255) {
+    function HSVaColor(h = 360, s = 0, v = 100, a = 255) {
         this.h = h;
         this.s = s;
         this.v = v;
@@ -1821,7 +1829,7 @@ function ColorPickerControl(cfg) {
                 if(self.min != null && v < self.min)
                     v = self.min;
                 // round a value to the specified precision in a step
-                _value = Extensions.round(Number(v), Extensions.countDecimals(self.step));
+                _value = utils.round(Number(v), utils.countDecimals(self.step));
                 // set value to input
                 range_input.value = _value;
                 // set value to label
@@ -1903,7 +1911,7 @@ function ColorPickerControl(cfg) {
             // set control value
             range_input.value = self.value;
             // set control text value
-            range_value.innerHTML = Number(self.value).toFixed(Extensions.countDecimals(self.step));
+            range_value.innerHTML = Number(self.value).toFixed(utils.countDecimals(self.step));
             //..
             if(self.max != null)
                 range_progress.style.width = self.value/self.max * 100% + '%';
@@ -2281,22 +2289,8 @@ function ColorPickerControl(cfg) {
                     if (e.keyCode === 13) {
                         // Cancel the default action, if needed
                         e.preventDefault();      
-                        
-                        let rgb = utils.hexToRgb(this.value);
-                
-                        rgb.r = rgb.r || 0;
-                        rgb.g = rgb.g || 0;
-                        rgb.b = rgb.b || 0;
-
-                        let hsv = utils.rgbToHsv(rgb.r, rgb.g, rgb.b);
-                        
-                        color_picker_control.color.h = color_picker_control.wheel.values.hue = hsv[0];
-                        color_picker_control.color.s = color_picker_control.wheel.values.saturation = hsv[1];
-                        color_picker_control.color.v = color_picker_control.brightness.value = hsv[2];
-
                         //..
-                        self.value = this.value;  
-
+                        self.value = this.value; 
                         //..
                         self.isFocused = false;   
                     }
@@ -2369,3 +2363,4 @@ function ColorPickerControl(cfg) {
     // run initialization of color picker control
     init();
 }
+

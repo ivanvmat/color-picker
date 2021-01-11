@@ -1,7 +1,8 @@
 .color-picker{
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 1000;
     width: 180px;
     height: auto;
@@ -136,6 +137,18 @@
     display: none;
 }
 
+
+input{
+    font-size: 100%;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
 
 .range-input-control{
     position: relative;
