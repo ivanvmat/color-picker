@@ -14,8 +14,6 @@
 
 <body style="width: 100%; height:100%; position: relative;">
 
-
-
 	<div id="background-container">
 		<ul>
 			<li></li>
@@ -31,8 +29,6 @@
 		</ul>
 	</div>
 
-
-
 	<div id="caption-container">
 		<div id="butterfly"><div class="wings"></div></div>
 		<ul>
@@ -47,7 +43,23 @@
 		</ul>
 	</div>
 
+	<div class="flip-container">
+		<div class="flipper">
+			<div class="front color-picker-dark-theme"></div>
+			<div class="back color-picker-light-theme"></div>
+		</div>
+	</div>
 
+	<div style="position: absolute; top: 75%; left: 50%; transform: translate(-50%, 0); width: auto; text-align: center;">
+		<div style="display: inline-block; float: left;"> 
+			<input id="dark-theme-option" name="theme-option" value="dark" checked="checked" type="radio" onchange="changeTheme(this);"> 
+			<label for="dark-theme-option" ><span style="background-color: rgba(38, 41, 50, 1.0);"></span></label> 
+		</div> 
+		<div style="display: inline-block; float: left;"> 
+			<input id="light-theme-option" name="theme-option" value="light" type="radio" onchange="changeTheme(this);"> 
+			<label for="light-theme-option"><span style="background-color: rgba(217, 214, 205, 1.0)"></span></label> 
+		</div>
+	</div>
 	
 	<a href="https://github.com/ivanvmat/color-picker" target="_blank">
 		<footer>
