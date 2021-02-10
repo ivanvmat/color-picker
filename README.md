@@ -49,3 +49,31 @@ const picker = new ColorPickerControl({
     theme: 'dark' 
 });
 ```
+
+> You can find more examples [here](EXAMPLES.md).
+
+## Events
+Use the `on(event, cb)` and `off(event, cb)` functions to bind / unbind eventlistener.
+
+| Event      | Description | Arguments |
+| -------------- | ----------- | --------- |
+| `init`         | Initialization done - color picker can be used | `ColorPickerControlInstance` |
+| `open`         | Color picker got opened | `ColorPickerControlInstance` |
+| `change`       | Color has changed | `HSVaColorObject` |
+| `close`        | Color picker got closed | `ColorPickerControlInstance` |
+
+> Example:
+```js
+picker.on('init', (instance) => {
+    console.log('Event: "init"', instance);
+});
+picker.on('open', (instance) => {
+    console.log('Event: "open"', instance);
+});
+picker.on('change', (color) => {
+    console.log('Event: "change"', color);
+});
+picker.on('close', (instance) => {
+    console.log('Event: "close"', instance);
+});
+```
