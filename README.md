@@ -19,3 +19,36 @@
 <h4 align="center">
     <a href="https://ivanvmat.github.io/color-picker/">Fully Featured demo</a>
 </h4>
+<<<<<<< HEAD
+
+### Features
+* Simple: The interface is straight forward and easy to use.
+* Practical: Multiple color representations. Multiple themes.
+* Mobile-friendly: Works well on mobile devices and touch screens.
+* No dependencies
+
+### Themes
+|Dark|Light|
+|----|-----|
+|![Dark theme](assets/dark_theme.png)|![Light theme](assets/light_theme.png)|
+
+### Getting Started
+> Note: The readme is always up-to-date with the latest commit. See [Releases](https://github.com/ivanvmat/color-picker/releases) for installation instructions regarding to the latest version.
+
+#### Browser
+```html
+
+<link rel="stylesheet" href="dist/color-picker.min.css"/>
+<script type="text/javascript" src="dist/color-picker.min.js"></script>
+```
+
+### Usage
+```javascript
+// Simple example, see optional options for more configuration.
+const picker = new ColorPickerControl({ 
+    container: document.body, 
+    theme: 'dark' 
+});
+```
+=======
+>>>>>>> 81b8c11890fa76c789c296aa138352d035dae56a
