@@ -19,7 +19,6 @@
 <h4 align="center">
     <a href="https://ivanvmat.github.io/color-picker/">Fully Featured demo</a>
 </h4>
-<<<<<<< HEAD
 
 ### Features
 * Simple: The interface is straight forward and easy to use.
@@ -50,5 +49,3 @@ const picker = new ColorPickerControl({
     theme: 'dark' 
 });
 ```
-=======
->>>>>>> 81b8c11890fa76c789c296aa138352d035dae56a
