@@ -7,7 +7,8 @@ function ColorPickerControl(cfg) {
     let config = Object.assign({
         container: document.body,
         theme: 'dark',
-        debug: false
+        debug: false,
+        use_alpha: true
     }, cfg);
     
     // private variables
@@ -354,20 +355,19 @@ function ColorPickerControl(cfg) {
                                         <span class="text-input-value">000000</span>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="color-picker-alpha-input range-input-control" data-value="255" data-step="0.01" data-min="0" data-max="255">
-                                <div class="range-input-enter-block">
-                                    <input class="range-input" type="number">
-                                </div>
-                                <div class="range-input-details-block">
-                                    <span class="range-input-progress"></span>
-                                    <span class="range-input-label">A:</span>
-                                    <span class="range-input-value">0.00</span>
-                                </div>
-                            </div>
-
-                        </div>
+                            </div>` + 
+                            ((config.use_alpha) ?
+                                `<div class="color-picker-alpha-input range-input-control" data-value="255" data-step="0.01" data-min="0" data-max="255">
+                                    <div class="range-input-enter-block">
+                                        <input class="range-input" type="number">
+                                    </div>
+                                    <div class="range-input-details-block">
+                                        <span class="range-input-progress"></span>
+                                        <span class="range-input-label">A:</span>
+                                        <span class="range-input-value">0.00</span>
+                                    </div>
+                                </div>` : ``)
+                        + `</div>
                     </div>
         
                 </div>
@@ -395,7 +395,8 @@ function ColorPickerControl(cfg) {
         // initialize control to manipulate hex value of color
         hex_input = new TextInputControl(self.root.querySelector('.color-picker-hex-input'));
         // initialize control to manipulate alpha channel of color
-        alpha_input = new RangeInputControl(self.root.querySelector('.color-picker-alpha-input'));
+        if(config.use_alpha)
+            alpha_input = new RangeInputControl(self.root.querySelector('.color-picker-alpha-input'));
         // binding events to ui
         bindEvents();
         // refreshing control
@@ -535,15 +536,17 @@ function ColorPickerControl(cfg) {
         // adding change event handler to change event listener of hex input control
         hex_input.on('change', hex_input_change_handler);
 
-        // creating change event handler for alpha input control 
-        alpha_input_change_handler = function(value){
-            // setting new hue value
-            self.color.a = value;
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of alpha input control
-        alpha_input.on('change', alpha_input_change_handler);
+        if(config.use_alpha){
+            // creating change event handler for alpha input control 
+            alpha_input_change_handler = function(value){
+                // setting new hue value
+                self.color.a = value;
+                // updating color picker control
+                self.update();
+            };
+            // adding change event handler to change event listener of alpha input control
+            alpha_input.on('change', alpha_input_change_handler);
+        }
     }
 
     /**
@@ -576,9 +579,10 @@ function ColorPickerControl(cfg) {
 
         // remove change event listener from hex input control
         hex_input.off('change', hex_input_change_handler);
-
+    
         // remove change event listener from alpha input control
-        alpha_input.off('change', alpha_input_change_handler);
+        if(config.use_alpha)
+            alpha_input.off('change', alpha_input_change_handler);
     }
 
     /**
@@ -606,7 +610,8 @@ function ColorPickerControl(cfg) {
         color_wheel.values.saturation = self.color.s;
         brightness_slider.value = self.color.v;
         //..
-        alpha_input.value = self.color.a;
+        if(config.use_alpha)
+            alpha_input.value = self.color.a;
         //..
         bindEvents();
         //..
@@ -671,7 +676,8 @@ function ColorPickerControl(cfg) {
         brightness_input = null;
         hex_input.dispose();
         hex_input = null;
-        alpha_input.dispose();
+        if(config.use_alpha)
+            alpha_input.dispose();
         alpha_input = null;
         // dispose functions
         emit = null;
