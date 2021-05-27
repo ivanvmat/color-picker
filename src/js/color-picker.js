@@ -137,16 +137,12 @@ function ColorPickerControl(cfg) {
                 );
             },
             hexToHsv: function (hex) {
+                hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
                 return utils.rgbToHsv(...hex.match(/.{2}/g).map(v => parseInt(v, 16)));
             },
             hexToRgb: function ( hex ) {
                 var r,g,b;
-                if ( hex.charAt(0) == '#' ) {
-                    hex = hex.substr(1);
-                }
-                if ( hex.length == 3 ) {
-                    hex = hex.substr(0,1) + hex.substr(0,1) + hex.substr(1,2) + hex.substr(1,2) + hex.substr(2,3) + hex.substr(2,3);
-                }
+                hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
                 r = hex.charAt(0) + '' + hex.charAt(1);
                 g = hex.charAt(2) + '' + hex.charAt(3);
                 b = hex.charAt(4) + '' + hex.charAt(5);
@@ -522,14 +518,13 @@ function ColorPickerControl(cfg) {
         
         // creating change event handler for hex input control 
         hex_input_change_handler = function(value){
+            let hex = hex_input.value.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
             //..
-            let rgb = utils.hexToRgb(hex_input.value);
+            let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
             //..
-            let hsv = utils.rgbToHsv(rgb[0], rgb[1], rgb[2]);
-            //..
-            self.color.h = hsv[0];
-            self.color.s = hsv[1];
-            self.color.v = hsv[2];
+            self.color.h = hsv[0] || 0;
+            self.color.s = hsv[1] || 0;
+            self.color.v = hsv[2] || 0;
             //..
             self.update();
         };
@@ -721,8 +716,18 @@ function ColorPickerControl(cfg) {
                 hsva.toString = mapper(hsva, arr => `hsva(${arr[0]}, ${arr[1]}%, ${arr[2]}%, ${this.a})`);
                 return hsva;
             },
-            fromHSLa() {
-                //..
+            fromHSLa(h, s, l, a = 255) {
+                let hsv = utils.hslToHsv(h, s, l);
+
+                if(hsv != null){
+                    this.h = hsv[0] || 0;
+                    this.s = hsv[1] || 0;
+                    this.v = hsv[2] || 0;
+                    this.a = a;
+                }
+                else{
+                    console.error('Error while parsing hsl into hsv');
+                }
             },
             toHSLa() {
                 let mapper = (original, next) => (precision = -1) => {
@@ -734,12 +739,12 @@ function ColorPickerControl(cfg) {
             },
             fromRGBa(r = 0, g = 0, b = 0, a = 255) {
                 //..
-                let hsva = utils.rgbToHsv(r, g, b);
+                let hsv = utils.rgbToHsv(r, g, b);
 
-                if(hsva != null){
-                    this.h = hsva[0];
-                    this.s = hsva[1];
-                    this.v = hsva[2];
+                if(hsv != null){
+                    this.h = hsv[0] || 0;
+                    this.s = hsv[1] || 0;
+                    this.v = hsv[2] || 0;
                     this.a = a;
                 }
                 else{
@@ -754,8 +759,19 @@ function ColorPickerControl(cfg) {
                 rgba.toString = mapper(rgba, arr => `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, ${this.a})`);
                 return rgba;
             },
-            fromHEX() {
+            fromHEX(hex, a = 255) {
+                hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
                 //..
+                let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
+                if(hsv != null){
+                    this.h = hsv[0] || 0;
+                    this.s = hsv[1] || 0;
+                    this.v = hsv[2] || 0;
+                    this.a = a;
+                }
+                else{
+                    console.error('Error while parsing hex into hsv');
+                }
             },
             toHEX() {
                 let hex = utils.hsvToHex(this.h, this.s, this.v);
