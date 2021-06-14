@@ -8,7 +8,12 @@ function ColorPickerControl(cfg) {
         container: document.body,
         theme: 'dark',
         debug: false,
-        use_alpha: true
+        use_alpha: true,
+        color: {
+            r: 255,
+            g: 255,
+            b: 255
+        }
     }, cfg);
     
     // private variables
@@ -183,7 +188,7 @@ function ColorPickerControl(cfg) {
     this.debug = config.debug; // debug mode flag
 
     // properties
-    let _color = new HSVaColor();
+    let _color = new HSVaColor().fromRGBa(config.color.r, config.color.g, config.color.b);
     Object.defineProperty(self, 'color', {
         // getter function
         get: function() { 
@@ -707,6 +712,7 @@ function ColorPickerControl(cfg) {
                 this.s = s;
                 this.v = v;
                 this.a = a;
+                return this;
             },
             toHSVa() {
                 let mapper = (original, next) => (precision = -1) => {
@@ -728,6 +734,7 @@ function ColorPickerControl(cfg) {
                 else{
                     console.error('Error while parsing hsl into hsv');
                 }
+                return this;
             },
             toHSLa() {
                 let mapper = (original, next) => (precision = -1) => {
@@ -750,6 +757,7 @@ function ColorPickerControl(cfg) {
                 else{
                     console.error('Error while parsing rgb into hsv');
                 }
+                return this;
             },
             toRGBa() {
                 let mapper = (original, next) => (precision = -1) => {
@@ -772,6 +780,7 @@ function ColorPickerControl(cfg) {
                 else{
                     console.error('Error while parsing hex into hsv');
                 }
+                return this;
             },
             toHEX() {
                 let hex = utils.hsvToHex(this.h, this.s, this.v);
