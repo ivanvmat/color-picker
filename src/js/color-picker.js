@@ -227,6 +227,7 @@ function ColorPickerControl(cfg) {
      *  Event function
      */
     this.on = function(event, fn) {
+        eventListeners[event] = eventListeners[event] || [];
         eventListeners[event].push(fn);
         return this;
     }
