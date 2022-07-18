@@ -1149,6 +1149,7 @@ function ColorPickerControl(conf) {
         let self = this,
             container = color_picker.root.querySelector('.color-picker-wheel-control'),
             canvas = container.querySelector('canvas'),
+            intermediateCanvas = document.createElement("canvas"),
             thumb = container.querySelector('.color-picker-wheel-control-thumb'),
             colorGradient,
             isMouseDown = false,
@@ -1340,16 +1341,22 @@ function ColorPickerControl(conf) {
          * Draws opacity pattern, hue gradient, saturation gradient and brightness layer.
          */
         let drawCanvas = function () {
-            // get the size of the canvas and its position relative to the document
+            // get the size of the main canvas and its position relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
 
-            // update canvas size based received values
+            // update main canvas size
             canvas.width = canvas.height = canvas_bb.width;
 
-            // get canvas context
+            // update intermediate canvas size
+            intermediateCanvas.width = intermediateCanvas.height = canvas_bb.width;
+
+            // get main canvas context
             let ctx = canvas.getContext("2d");
 
-            // rotate canvas context to 90 degrees
+            // get intermediate canvas context
+            let intermediateCtx = intermediateCanvas.getContext("2d");
+
+            // rotate main canvas context to 90 degrees
             ctx.translate(canvas.width/2, canvas.height/2);
             ctx.rotate(90 * Math.PI / 180);
             ctx.translate(-canvas.width/2, -canvas.height/2);
@@ -1397,10 +1404,10 @@ function ColorPickerControl(conf) {
             opacityPatternContext.fillRect(cell_size, cell_size, cell_size, cell_size);
             opacityPatternContext.closePath();
 
-            // add opacity pattern on the canvas context
+            // add opacity pattern on the main canvas context
             let opacity_pattern = ctx.createPattern(opacityPattern, "repeat");
 
-            // draw an opacity pattern on the canvas
+            // draw an opacity pattern on the main canvas
             ctx.beginPath();
             ctx.fillStyle = opacity_pattern;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1412,19 +1419,19 @@ function ColorPickerControl(conf) {
             ctx.arc(canvas.width/2, canvas.width/2, canvas.width/2, 0, Math.PI*2);
             ctx.stroke();
             ctx.closePath();   
+            
+            // draw color gradient to intermediate canvas context
+            intermediateCtx.drawImage(colorGradient, 0, 0, canvas.width, canvas.height);
 
-            // set color wheel transparency level
+            // draw brightness layer to intermediate canvas context
+            intermediateCtx.fillStyle = 'rgba(0, 0, 0, ' + Math.abs(1 - (color_picker.color.v / 100)) +')';
+            intermediateCtx.fillRect(0, 0,  canvas.width, canvas.height);
+
+            // set transparency level to the main canvas
             ctx.globalAlpha = color_picker.color.a / 255;
 
-            // draw color gradient to canvas context
-            ctx.drawImage(colorGradient, 0, 0, canvas.width, canvas.height);
-
-            // set color wheel brightness level
-            ctx.globalAlpha = Math.abs(1 - (color_picker.color.v / 100));
-
-            // draw color wheel brightness layer to canvas context
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0,  canvas.width, canvas.height);
+            // draw intermediate canvas to main canvas context
+            ctx.drawImage(intermediateCanvas, 0, 0, canvas.width, canvas.height);
         };
 
         /**
@@ -1673,6 +1680,7 @@ function ColorPickerControl(conf) {
             self = null;
             container = null;
             canvas = null; 
+            intermediateCanvas = null; 
             thumb = null;
             isMouseDown = null; 
             colorGradient = null;
@@ -1803,7 +1811,7 @@ function ColorPickerControl(conf) {
             // get the size of the canvas and its position relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
 
-            // update canvas size based received values
+            // update canvas size
             canvas.width = canvas_bb.width;
             canvas.height = canvas_bb.height;
 
