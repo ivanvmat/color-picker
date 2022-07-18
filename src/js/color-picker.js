@@ -1,47 +1,91 @@
+//============================================================
+//
+// Copyright (C) 2022 Ivan Matveev
+//
+// Permission is hereby granted, free of charge, to any
+// person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the
+// Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do
+// so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice
+// shall be included in all copies or substantial portions
+// of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY
+// OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+// LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+// EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+// AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+// OR OTHER DEALINGS IN THE SOFTWARE.
+//
+//============================================================
+
 "use strict";
+
 /**
-* ColorPicker control
-**/
-function ColorPickerControl(cfg) {
-    // configuration
+ * Color picker control creation function
+ *
+ * @param {Object} conf Color picker configuration
+*/
+function ColorPickerControl(conf) {
+    // copying configuration values
     let config = Object.assign({
         container: document.body,
         theme: 'dark',
-        debug: false,
-        use_alpha: true,
+        useAlpha: true,
         color: {
             r: 255,
             g: 255,
             b: 255
         }
-    }, cfg);
-    
+    }, conf);
+
     // private variables
-    let color_wheel,
-        brightness_slider,
-        tab_selection_buttons,
-        color_wheel_change_handler,
-        brightness_slider_change_handler,
-        red_input,
-        green_input,
-        blue_input,
-        hue_input,
-        saturation_input,
-        brightness_input,
-        hex_input, 
-        alpha_input,  
-        tab_selection_handler,
-        hue_input_change_handler,
-        saturation_input_change_handler,
-        brightness_input_change_handler,
-        red_input_change_handler,
-        green_input_change_handler,
-        blue_input_change_handler,
-        alpha_input_change_handler,
-        hex_input_change_handler,
-        color_picker_control = this,
-        self = this,
+    let self = this,
+        controls = {
+            color_wheel: null,
+            brightness_slider: null,
+            tab_selection_buttons: null,
+            red_input: null,
+            green_input: null,
+            blue_input: null,
+            hue_input: null,
+            saturation_input: null,
+            brightness_input: null,
+            hex_input: null,
+            alpha_input: null,  
+        },
+        eventHandlers = {
+            color_change: null,
+            color_wheel_change: null,
+            brightness_slider_change: null,
+            tab_selection_change: null,
+            hue_input_change: null,
+            saturation_input_change: null,
+            brightness_input_change: null,
+            red_input_change: null,
+            green_input_change: null,
+            blue_input_change: null,
+            alpha_input_change: null,
+            hex_input_change: null,
+        },
         utils = {
+            /**
+             * Converts HSV spectrum to HSL
+             * 
+             * @param hue Hue value
+             * @param saturation Saturation value
+             * @param value Brightness value
+             * 
+             * @returns {Array} Array with HSL values
+             */
             hsvToHsl: function (hue, saturation, value) {
                 saturation /= 100;
                 value /= 100;
@@ -57,13 +101,22 @@ function ColorPickerControl(cfg) {
                         saturation = saturation * value / (2 - lightness * 2);
                     }
                 }
-        
+
                 return [
                     hue,
                     saturation * 100,
                     lightness * 100
                 ];
             },
+            /**
+             * Converts HSL spectrum to HSV
+             * 
+             * @param hue Hue value
+             * @param saturation Saturation value
+             * @param lightness Lightness value
+             * 
+             * @returns {Array} Array with HSV values
+             */
             hslToHsv: function (hue, saturation, lightness) {
                 saturation /= 100;
                 lightness /= 100;
@@ -73,6 +126,15 @@ function ColorPickerControl(cfg) {
                 const value = (lightness + saturation) * 100;
                 return [hue, isNaN(ns) ? 0 : ns, value];
             },
+            /**
+             * Converts HSV spectrum to RGB
+             * 
+             * @param hue Hue value
+             * @param saturation Saturation value
+             * @param value Brightness value
+             * 
+             * @returns {Array} Array with RGB values
+             */
             hsvToRgb: function (hue, saturation, value) {
                 hue = (hue / 360) * 6;
                 saturation /= 100;
@@ -96,6 +158,15 @@ function ColorPickerControl(cfg) {
                     (blue * 255)
                 ];
             },
+            /**
+             * Converts RGB spectrum to HSV
+             * 
+             * @param red Red channel
+             * @param green Green channel
+             * @param blue Blue channel
+             * 
+             * @returns {Array} Array with HSV values
+             */
             rgbToHsv: function (red, green, blue) {
                 red /= 255;
                 green /= 255;
@@ -136,17 +207,40 @@ function ColorPickerControl(cfg) {
                     (value * 100)
                 ];
             },
+            /**
+             * Converts HSV spectrum to Hex
+             * 
+             * @param hue Hue value
+             * @param saturation Saturation value
+             * @param value Brightness value
+             * 
+             * @returns {Array} Array with HSV values
+             */
             hsvToHex: function (hue, saturation, value) {
                 return utils.hsvToRgb(hue, saturation, value).map(v =>
                     Math.round(v).toString(16).padStart(2, '0')
                 );
             },
+            /**
+             * Converts Hex spectrum to HSV
+             * 
+             * @param hex Hex value
+             * 
+             * @returns {Array} Array with HSV values
+             */
             hexToHsv: function (hex) {
                 hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
                 return utils.rgbToHsv(...hex.match(/.{2}/g).map(v => parseInt(v, 16)));
             },
+            /**
+             * Converts Hex spectrum to RGB
+             * 
+             * @param hex Hex value
+             * 
+             * @returns {Array} Array with RGB values
+             */
             hexToRgb: function ( hex ) {
-                var r,g,b;
+                let r,g,b;
                 hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
                 r = hex.charAt(0) + '' + hex.charAt(1);
                 g = hex.charAt(2) + '' + hex.charAt(3);
@@ -160,17 +254,46 @@ function ColorPickerControl(cfg) {
                     b 
                 ];
             },
+            /**
+             * Gets the size of the element and its position relative to the viewport and scroll offset
+             * 
+             * @param el Html element
+             * 
+             * @returns {Object} Size and position of the element
+             */
             getBoundingBox: function(el){
                 let rect = el.getBoundingClientRect();
                 return { top: rect.top + (window.pageYOffset || document.documentElement.scrollTop), left: rect.left + (window.pageXOffset || document.documentElement.scrollLeft), width: rect.width, height: rect.height  };
             },
+            /**
+             * Converts degrees to radians
+             * 
+             * @param degrees Angle value in degrees
+             * 
+             * @returns {Number} Angle value in radians
+             */
             degreesToRadians: function(degrees) {
                 return degrees * (Math.PI / 180);
             },
+            /**
+             * Counts the number of decimal places
+             * 
+             * @param value Value
+             * 
+             * @returns {Number} Number of decimal places in the specified value
+             */
             countDecimals: function (value) {
                 if(Math.floor(value.valueOf()) === value.valueOf()) return 0;
                 return value.toString().split(".")[1].length || 0; 
             },
+            /**
+             * Rounds value to specified number of decimal places
+             * 
+             * @param value Value
+             * @param places Number of decimal places
+             * 
+             * @returns {Number} Rounded value
+             */
             round: function(value, places) {
                 let res = Number(Math.round(value + 'e' + places) + 'e-' + places);
                 return !isNaN(res) ? res : 0;
@@ -182,25 +305,39 @@ function ColorPickerControl(cfg) {
             close: []
         };
 
-    // public variables
-    this.root;
-    this.container = config.container;
-    this.debug = config.debug; // debug mode flag
-
     // properties
-    let _color = new HSVaColor().fromRGBa(config.color.r, config.color.g, config.color.b);
+    this.root = document.createElement('div');
+    this.container = config.container;
+    let _is_open = true;
+    Object.defineProperty(self, 'isOpen', {
+        get: function() { 
+            return _is_open; 
+        },
+        set: function(v){
+            if(v != null){
+                // update property value
+                _is_open = v;
+                // show or hide control based on new value
+                self.root.style.visibility = _is_open ? 'visible' : 'collapse';       
+                // trigger open or close event based on the new value
+                emit(_is_open ? 'open' : 'close', self);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    let _color = new HSVaColor().fromRGBa(config.color.r || 255, config.color.g || 255, config.color.b || 255);
     Object.defineProperty(self, 'color', {
-        // getter function
         get: function() { 
             return _color; 
         },
-        //setter function
-        set: function(c){
-            // if new color is HSVaColor type
-            if(c instanceof HSVaColor){
-                // set new color value
-                _color = c;
-                // trigger value changed event
+        set: function(v){
+            if(v instanceof HSVaColor){
+                // dispose old color
+                _color.dispose();
+                // update property value
+                _color = v;
+                // trigger color change event
                 emit('change', self.value);
             }
         },
@@ -208,23 +345,22 @@ function ColorPickerControl(cfg) {
         configurable: true
     });
 
+
     /**
-     * Event emmiter function
-     * @param {String} event  
-     *  Event name
-     * @param {Any} args  
-     *  Event data
+     * Event emitter function
+     * 
+     * @param {String} event Event name 
+     * @param {Any} args Argument list
      */
     let emit = function(event, ...args) {
         eventListeners[event].forEach(cb => cb(...args, self));
     }
 
     /**
-     * Event sundcribetion function
-     * @param {String} event  
-     *  Event name
-     * @param {Function} fn  
-     *  Event function
+     * Event subscribe function
+     * 
+     * @param {String} event Event name 
+     * @param {Function} fn Function
      */
     this.on = function(event, fn) {
         eventListeners[event] = eventListeners[event] || [];
@@ -233,11 +369,10 @@ function ColorPickerControl(cfg) {
     }
 
     /**
-     * Event unsundcribetion function
-     * @param {String} event  
-     *  Event name
-     * @param {Function} fn  
-     *  Event function
+     * Event unsubscribe function
+     * 
+     * @param {String} event Event name 
+     * @param {Function} fn Function  
      */
     this.off = function(event, fn) {
         const functions = (eventListeners[event] || []);
@@ -248,31 +383,26 @@ function ColorPickerControl(cfg) {
     }
 
     /**
-     * Color picker control initialization function.
-     * Creates color picker element, add it to the document body or specified container and binds events to ui.
-     **/
+     * Control initialization function.
+     * 
+     * Creates a color picker and adds it to the container. Binds events to ui.
+     */
     let init = function () {
-        // creating root element
-        let root = document.createElement('div');
-        root.innerHTML = `
-            <div class="color-picker">
-        
+        // create root element
+        self.root.innerHTML = `
+            <div class="color-picker"> 
             <div class="color-picker-controls">
                 <div class="color-picker-controls-group" style="display: flex; flex-direction: row;height: 160px;">
-        
                     <div class="color-picker-wheel-control">
                         <canvas id="wheel-canvas" class="wheel-canvas"></canvas>
                         <div class="color-picker-wheel-control-thumb" style="top:50%; left: 50%;"></div>
                     </div>
-        
                     <div class="color-picker-brightness-control">
                         <canvas id="brightness-canvas" class="brightness-canvas"></canvas>
                         <div class="color-picker-brightness-control-thumb" style="bottom: 0; left: 50%;"></div>
                     </div>
-        
                 </div>
                 <div class="color-picker-controls-group" style="flex: 1; padding-top: 0;">
-
                     <div class="color-picker-input-controls">
                         <div class="color-picker-input-controls-tab-headers">
                             <button data-tab="rgb">RGB</button>
@@ -280,7 +410,6 @@ function ColorPickerControl(cfg) {
                             <button data-tab="hex">HEX</button>
                         </div>
                         <div class="color-picker-input-controls-tabs">
-
                             <div class="color-picker-input-controls-tab" data-tab="rgb">
                                 <div class="color-picker-red-input range-input-control" data-value="0" data-step="0.01" data-min="0" data-max="255">
                                     <div class="range-input-enter-block">
@@ -313,7 +442,6 @@ function ColorPickerControl(cfg) {
                                     </div>
                                 </div>
                             </div>
-
                             <div class="color-picker-input-controls-tab selected" data-tab="hsv">
                                 <div class="color-picker-hue-input range-input-control" data-value="0" data-step="0.01" data-min="0" data-max="360">
                                     <div class="range-input-enter-block">
@@ -346,7 +474,6 @@ function ColorPickerControl(cfg) {
                                     </div>
                                 </div>
                             </div>
-
                             <div class="color-picker-input-controls-tab" data-tab="hex">
                                 <div class="color-picker-hex-input text-input-control" data-value="000000" data-is-alphanumeric="true">
                                     <div class="text-input-enter-block">
@@ -358,7 +485,7 @@ function ColorPickerControl(cfg) {
                                     </div>
                                 </div>
                             </div>` + 
-                            ((config.use_alpha) ?
+                            ((config.useAlpha) ?
                                 `<div class="color-picker-alpha-input range-input-control" data-value="255" data-step="0.01" data-min="0" data-max="255">
                                     <div class="range-input-enter-block">
                                         <input class="range-input" type="number">
@@ -371,537 +498,745 @@ function ColorPickerControl(cfg) {
                                 </div>` : ``)
                         + `</div>
                     </div>
-        
                 </div>
             </div>
-        
-        </div>
-        `.trim();
-        self.root = root.firstElementChild;
-        self.root.dataset.theme = config.theme;
+        </div>`.trim();
+        // add root element to container
         self.container.appendChild(self.root);
+
+        // set theme
+        self.root.dataset.theme = config.theme;
+
+        // set isOpen state
+        self.isOpen = config.isOpen;
+
         // initialize control to manipulate hue and saturation values
-        color_wheel = new WheelControl(); 
+        controls.color_wheel = new ColorWheelControl({ color_picker: self }); 
+        controls.color_wheel.values.hue = self.color.h;
+        controls.color_wheel.values.saturation = self.color.s;
+
         // initialize control to manipulate brightness value
-        brightness_slider = new BrightnessControl();
-        // getting tab selection buttons
-        tab_selection_buttons = self.root.querySelectorAll('.color-picker-input-controls-tab-headers button');
-        // initialize control to manipulate rgb channels of color
-        red_input = new RangeInputControl(self.root.querySelector('.color-picker-red-input'));
-        green_input = new RangeInputControl(self.root.querySelector('.color-picker-green-input'));
-        blue_input = new RangeInputControl(self.root.querySelector('.color-picker-blue-input'));
-        // initialize control to manipulate hsv channels of color
-        hue_input = new RangeInputControl(self.root.querySelector('.color-picker-hue-input'));
-        saturation_input = new RangeInputControl(self.root.querySelector('.color-picker-saturation-input'));
-        brightness_input = new RangeInputControl(self.root.querySelector('.color-picker-brightness-input'));
+        controls.brightness_slider = new BrightnessSliderControl({ color_picker: self });
+        controls.brightness_slider.value = self.color.v;
+
+        // get tab selection buttons list
+        controls.tab_selection_buttons = self.root.querySelectorAll('.color-picker-input-controls-tab-headers button');
+
+        // initialize controls to manipulate rgb channels of color
+        controls.red_input = new NumberInputControl(self.root.querySelector('.color-picker-red-input'));
+        controls.green_input = new NumberInputControl(self.root.querySelector('.color-picker-green-input'));
+        controls.blue_input = new NumberInputControl(self.root.querySelector('.color-picker-blue-input'));
+        let rgb = utils.hsvToRgb(self.color.h, self.color.s, self.color.v);
+        controls.red_input.value = rgb[0];
+        controls.green_input.value = rgb[1];
+        controls.blue_input.value = rgb[2];
+
+        // initialize controls to manipulate hsv channels of color
+        controls.hue_input = new NumberInputControl(self.root.querySelector('.color-picker-hue-input'));
+        controls.hue_input.value = self.color.h;
+        controls.saturation_input = new NumberInputControl(self.root.querySelector('.color-picker-saturation-input'));
+        controls.saturation_input.value = self.color.s;
+        controls.brightness_input = new NumberInputControl(self.root.querySelector('.color-picker-brightness-input'));
+        controls.brightness_input.value = self.color.v;
+        
         // initialize control to manipulate hex value of color
-        hex_input = new TextInputControl(self.root.querySelector('.color-picker-hex-input'));
+        controls.hex_input = new TextInputControl(self.root.querySelector('.color-picker-hex-input'));
+        let hex = utils.hsvToHex(self.color.h, self.color.s, self.color.v); 
+        controls.hex_input.value = hex.join('').toUpperCase();
+        
         // initialize control to manipulate alpha channel of color
-        if(config.use_alpha)
-            alpha_input = new RangeInputControl(self.root.querySelector('.color-picker-alpha-input'));
-        // binding events to ui
+        if(config.useAlpha){
+            controls.alpha_input = new NumberInputControl(self.root.querySelector('.color-picker-alpha-input'));
+            controls.alpha_input.value = self.color.a;
+        }
+
+        // bind events to ui
         bindEvents();
-        // refreshing control
-        self.update();
-        // emmit open event
-        emit('open');
     };
 
     /**
-     * Binding events function.
-     * Binds events to color picker controls.
-     **/
-    let bindEvents = function () {  
-        // creating click event handler for tab switching buttons
-        tab_selection_handler = function(e){
-            // removing 'active' class from all tab switching buttons and tabs
-            tab_selection_buttons.forEach(e=>e.classList.remove('selected'));
-            self.root.querySelectorAll('.color-picker-input-controls-tab').forEach(e=>e.classList.remove('selected'));
-            // adding 'active' class to target button and tab
+     * Event binding function
+     */
+    let bindEvents = function () {
+        // create click event handler for tab switching buttons
+        eventHandlers.tab_selection_change = function(e){     
+            // reset the selected state of the buttons
+            controls.tab_selection_buttons.forEach(e => e.classList.remove('selected'));
+            self.root.querySelectorAll('.color-picker-input-controls-tab').forEach(e => e.classList.remove('selected'));
+            // set the selected state to the current button
             e.target.classList.add("selected");
+            // set the selected state to the current tab
             self.root.querySelector('.color-picker-input-controls-tab[data-tab="' + e.target.dataset.tab  + '"]').classList.add('selected');
         };
-        // adding click event handler to click event listeners of tab switching buttons
-        tab_selection_buttons.forEach(button => {
-            button.addEventListener('click', tab_selection_handler);
-        });
+        // add a click event handler to the tab switch buttons
+        controls.tab_selection_buttons.forEach(button => button.addEventListener('click', eventHandlers.tab_selection_change));
 
-        // creating change event handler for color wheel control  
-        color_wheel_change_handler = function(values){
-            // setting new hue value
+        // create a color change event handler
+        eventHandlers.color_change = () => self.update();
+        // add change event handler to color
+        self.color.on('change', eventHandlers.color_change);
+
+        // create change event handler for color wheel control  
+        eventHandlers.color_wheel_change = function(values){
+            // set new hue value
             self.color.h = values.hue;
-            // setting new saturation value
+            // set new saturation value
             self.color.s = values.saturation;
-            // updating color picker control
+            // update control
             self.update();
+            // trigger color change event
+            emit('change', self.color);
         };
-        // adding change event handler to change event listener of color wheel control
-        color_wheel.on('change', color_wheel_change_handler);
+        // add change event handler to color wheel control
+        controls.color_wheel.on('change', eventHandlers.color_wheel_change);
 
-        // creating change event handler for brightness control  
-        brightness_slider_change_handler = function(value){
-            // setting new brightness value
+        // create change event handler for brightness slider control  
+        eventHandlers.brightness_slider_change = function(value){
+            // set new brightness value
             self.color.v = value;
-            // updating color picker control
+            // update control
             self.update();
+            // trigger color change event
+            emit('change', self.color);
         };
-        // adding change event handler to change event listener of brightness control
-        brightness_slider.on('change', brightness_slider_change_handler);
+        // add change event handler to brightness slider control
+        controls.brightness_slider.on('change', eventHandlers.brightness_slider_change);
 
-        // creating change event handler for hue input control  
-        hue_input_change_handler = function(value){
-            // setting new hue value
+        // create change event handler for hue input control  
+        eventHandlers.hue_input_change = function(value){
+            // set new hue value
             self.color.h = value;
-            // updating color picker control
+            // update control
             self.update();
+            // trigger color change event
+            emit('change', self.color);
         };
-        // adding change event handler to change event listener of hue input control
-        hue_input.on('change', hue_input_change_handler);
-        // creating change event handler for saturation input control  
-        saturation_input_change_handler = function(value){
-            // setting new saturation value
-            self.color.s = value;
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of saturation input control
-        saturation_input.on('change', saturation_input_change_handler);
-        // creating change event handler for brightness input control  
-        brightness_input_change_handler = function(value){
-            // setting new brightness value
-            self.color.v = value;
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of brightness input control
-        brightness_input.on('change', brightness_input_change_handler);
-    
-        // creating change event handler for red input control     
-        red_input_change_handler = function(value){
-            // getting convert rgb color data to hsv
-            let hsv = utils.rgbToHsv(red_input.value, green_input.value, blue_input.value);
-            // setting new hue value
-            self.color.h = hsv[0];
-            // setting new saturation value
-            self.color.s = hsv[1];
-            // setting new brightness value
-            self.color.v = hsv[2];
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of red input control
-        red_input.on('change', red_input_change_handler);
-        // creating change event handler for green input control 
-        green_input_change_handler = function(value){
-            // getting convert rgb color data to hsv
-            let hsv = utils.rgbToHsv(red_input.value, green_input.value, blue_input.value);
-            // setting new hue value
-            self.color.h = hsv[0];
-            // setting new saturation value
-            self.color.s = hsv[1];
-            // setting new brightness value
-            self.color.v = hsv[2];
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of green input control
-        green_input.on('change', green_input_change_handler);
-        // creating change event handler for blue input control 
-        blue_input_change_handler = function(value){
-            // getting convert rgb color data to hsv
-            let hsv = utils.rgbToHsv(red_input.value, green_input.value, blue_input.value);
-            // setting new hue value
-            self.color.h = hsv[0];
-            // setting new saturation value
-            self.color.s = hsv[1];
-            // setting new brightness value
-            self.color.v = hsv[2];
-            // updating color picker control
-            self.update();
-        };
-        // adding change event handler to change event listener of blue input control
-        blue_input.on('change', blue_input_change_handler);
-        
-        // creating change event handler for hex input control 
-        hex_input_change_handler = function(value){
-            let hex = hex_input.value.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
-            //..
-            let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
-            //..
-            self.color.h = hsv[0] || 0;
-            self.color.s = hsv[1] || 0;
-            self.color.v = hsv[2] || 0;
-            //..
-            self.update();
-        };
-        // adding change event handler to change event listener of hex input control
-        hex_input.on('change', hex_input_change_handler);
+        // add change event handler to hue input control
+        controls.hue_input.on('change', eventHandlers.hue_input_change);
 
-        if(config.use_alpha){
-            // creating change event handler for alpha input control 
-            alpha_input_change_handler = function(value){
-                // setting new hue value
+        // create change event handler for saturation input control  
+        eventHandlers.saturation_input_change = function(value){
+            // set new saturation value
+            self.color.s = value;
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to saturation input control
+        controls.saturation_input.on('change', eventHandlers.saturation_input_change);
+
+        // create change event handler for brightness input control  
+        eventHandlers.brightness_input_change = function(value){
+            // set new brightness value
+            self.color.v = value;
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to brightness input control
+        controls.brightness_input.on('change', eventHandlers.brightness_input_change);
+    
+        // create change event handler for red input control     
+        eventHandlers.red_input_change = function(value){    
+            // convert rgb color data to hsv
+            let hsv = utils.rgbToHsv(controls.red_input.value, controls.green_input.value, controls.blue_input.value);
+            // set new hue value
+            self.color.h = hsv[0];
+            // set new saturation value
+            self.color.s = hsv[1];
+            // set new brightness value
+            self.color.v = hsv[2];
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to red input control
+        controls.red_input.on('change', eventHandlers.red_input_change);
+
+        // create change event handler for green input control 
+        eventHandlers.green_input_change = function(value){
+            // convert rgb color data to hsv
+            let hsv = utils.rgbToHsv(controls.red_input.value, controls.green_input.value, controls.blue_input.value);
+            // set new hue value
+            self.color.h = hsv[0];
+            // set new saturation value
+            self.color.s = hsv[1];
+            // set new brightness value
+            self.color.v = hsv[2];
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to green input control
+        controls.green_input.on('change', eventHandlers.green_input_change);
+
+        // create change event handler for blue input control 
+        eventHandlers.blue_input_change = function(value){
+            // convert rgb color data to hsv
+            let hsv = utils.rgbToHsv(controls.red_input.value, controls.green_input.value, controls.blue_input.value);
+            // set new hue value
+            self.color.h = hsv[0];
+            // set new saturation value
+            self.color.s = hsv[1];
+            // set new brightness value
+            self.color.v = hsv[2];
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to blue input control
+        controls.blue_input.on('change', eventHandlers.blue_input_change);
+        
+        // create change event handler for hex input control 
+        eventHandlers.hex_input_change = function(value){
+            // get color hex value
+            let hex = controls.hex_input.value.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
+            // convert hex color data to hsv
+            let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
+            // set new hue value
+            self.color.h = hsv[0] || 0;
+            // set new saturation value
+            self.color.s = hsv[1] || 0;
+            // set new brightness value
+            self.color.v = hsv[2] || 0;
+            // update control
+            self.update();
+            // trigger color change event
+            emit('change', self.color);
+        };
+        // add change event handler to change event listener of hex input control
+        controls.hex_input.on('change', eventHandlers.hex_input_change);
+
+        if(config.useAlpha){
+            // create change event handler for alpha input control 
+            eventHandlers.alpha_input_change = function(value){
+                // set new alpha value
                 self.color.a = value;
-                // updating color picker control
+                // update control
                 self.update();
+                // trigger color change event
+                emit('change', self.color);
             };
-            // adding change event handler to change event listener of alpha input control
-            alpha_input.on('change', alpha_input_change_handler);
+            // add change event handler to alpha input control
+            controls.alpha_input.on('change', eventHandlers.alpha_input_change);
         }
     }
 
     /**
-     * Unbinding events function.
-     * Unbinds events from color picker controls.
-     **/
-    let unbindEvents = function () {  
-        // remove click event listeners from tab switching buttons
-        tab_selection_buttons.forEach(b => b.removeEventListener('click', tab_selection_handler));
-
-        // remove change event listener from color wheel control
-        color_wheel.off('change', color_wheel_change_handler);
-
-        // remove change event listener from brightness control
-        brightness_slider.off('change', brightness_slider_change_handler);
-
-        // remove change event listener from hue input control
-        hue_input.off('change', hue_input_change_handler);
-        // remove change event listener from saturation input control
-        saturation_input.off('change', saturation_input_change_handler);
-        // remove change event listener from brightness input control
-        brightness_input.off('change', brightness_input_change_handler);
-
-        // remove change event listener from red input control
-        red_input.off('change', red_input_change_handler);
-        // remove change event listener from green input control
-        green_input.off('change', green_input_change_handler);
-        // remove change event listener from blue input control
-        blue_input.off('change', blue_input_change_handler);
-
-        // remove change event listener from hex input control
-        hex_input.off('change', hex_input_change_handler);
-    
-        // remove change event listener from alpha input control
-        if(config.use_alpha)
-            alpha_input.off('change', alpha_input_change_handler);
+     * Event unbinding function
+     */
+    let unbindEvents = function () {
+        // remove click event handler from tab switching buttons
+        controls.tab_selection_buttons.forEach(button => button.removeEventListener('click', eventHandlers.tab_selection_change));
+        // remove change event handler from color
+        self.color.off('change', eventHandlers.color_change);
+        // remove change event handler from color wheel control
+        controls.color_wheel.off('change', eventHandlers.color_wheel_change);
+        // remove change event handler from brightness slider control
+        controls.brightness_slider.off('change', eventHandlers.brightness_slider_change);
+        // remove change event handler from hue input control
+        controls.hue_input.off('change', eventHandlers.hue_input_change);
+        // remove change event handler from saturation input control
+        controls.saturation_input.off('change', eventHandlers.saturation_input_change);
+        // remove change event handler from brightness input control
+        controls.brightness_input.off('change', eventHandlers.brightness_input_change);
+        // remove change event handler from red input control
+        controls.red_input.off('change', eventHandlers.red_input_change);
+        // remove change event handler from green input control
+        controls.green_input.off('change', eventHandlers.green_input_change);
+        // remove change event handler from blue input control
+        controls.blue_input.off('change', eventHandlers.blue_input_change);
+        // remove change event handler from hex input control
+        controls.hex_input.off('change', eventHandlers.hex_input_change);
+        // remove change event handler from alpha input control
+        if(config.useAlpha)
+            controls.alpha_input.off('change', eventHandlers.alpha_input_change);
     }
 
     /**
-     * The function of ..
-     **/
-    this.update = function (trigger_change_event = true) {
-        //..
+     * Control opening function
+     */
+    this.open = () => this.isOpen = true;
+
+    /**
+     * Control closing function
+     */
+    this.close = () => this.isOpen = false;
+
+    /**
+     * Control content update function
+     */
+    this.update = function () {
+        // unbind events from control
         unbindEvents();
-        //..
+
+        // update color wheel control values
+        controls.color_wheel.values.hue = self.color.h;
+        controls.color_wheel.values.saturation = self.color.s;
+
+        // update brightness slider control value
+        controls.brightness_slider.value = self.color.v;
+
+        // update hsv input controls values
+        controls.hue_input.value = self.color.h;
+        controls.saturation_input.value = self.color.s;
+        controls.brightness_input.value = self.color.v;
+
+        // update rgb input controls values
         let rgb = utils.hsvToRgb(self.color.h, self.color.s, self.color.v);
-        //..
+        controls.red_input.value = rgb[0];
+        controls.green_input.value = rgb[1];
+        controls.blue_input.value = rgb[2];
+
+        // update hex input control value
         let hex = utils.hsvToHex(self.color.h, self.color.s, self.color.v); 
-        //..
-        hue_input.value = self.color.h;
-        saturation_input.value = self.color.s;
-        brightness_input.value = self.color.v;
-        //..
-        red_input.value = rgb[0];
-        green_input.value = rgb[1];
-        blue_input.value = rgb[2];
-        //..
-        hex_input.value = hex.join('').toUpperCase();
-        //..
-        color_wheel.values.hue = self.color.h;
-        color_wheel.values.saturation = self.color.s;
-        brightness_slider.value = self.color.v;
-        //..
-        if(config.use_alpha)
-            alpha_input.value = self.color.a;
-        //..
+        controls.hex_input.value = hex.join('').toUpperCase();
+
+        // update alpha input control value
+        if(config.useAlpha)
+            controls.alpha_input.value = self.color.a;
+
+        // bind events to control
         bindEvents();
-        //..
-        if(trigger_change_event)
-            emit('change', this.color);       
     };
 
     /**
-     * Destroying control function.
-     * Unbinds control events and dispose control data.
-     **/
+     * Control dispose function
+     */
     this.dispose = function () {
         // unbind events 
         unbindEvents();
+
         // dispose properties
+        this.isOpen = null;
+        _is_open = null;
         this.color.dispose();
         this.color = null;
-        this.debug = null;
+        _color = null;
         this.root.parentNode.removeChild(this.root);
         this.root = null;
-        // dispose handlers
-        tab_selection_handler = null;
-        color_wheel_change_handler = null;
-        brightness_slider_change_handler = null;
-        hue_input_change_handler = null;
-        saturation_input_change_handler = null;
-        brightness_input_change_handler = null;
-        red_input_change_handler = null;
-        green_input_change_handler = null;
-        blue_input_change_handler = null;
-        alpha_input_change_handler = null;
-        hex_input_change_handler = null;
-        // dispose variables   
-        config = null;
-        color_picker_control = null;
-        self = null;
-        utils = null;
+        this.container = null;
+
+        // dispose event handlers
+        eventHandlers.color_change = null;
+        eventHandlers.tab_selection_change = null;
+        eventHandlers.color_wheel_change = null;
+        eventHandlers.brightness_slider_change = null;
+        eventHandlers.hue_input_change = null;
+        eventHandlers.saturation_input_change = null;
+        eventHandlers.brightness_input_change = null;
+        eventHandlers.red_input_change = null;
+        eventHandlers.green_input_change = null;
+        eventHandlers.blue_input_change = null;
+        eventHandlers.alpha_input_change = null;
+        eventHandlers.hex_input_change = null;
+
+        // dispose event listeners
         eventListeners.open.splice(0, eventListeners.open.length);
         eventListeners.open = null;
         eventListeners.change.splice(0, eventListeners.change.length);
         eventListeners.change = null;
         eventListeners.close.splice(0, eventListeners.close.length);
         eventListeners.close = null;
-        eventListeners = null;
+
         //dispose controls
-        color_wheel.dispose();
-        color_wheel = null;
-        brightness_slider.dispose();
-        brightness_slider = null;
-        tab_selection_buttons = null;
-        red_input.dispose();
-        red_input = null;
-        green_input.dispose();
-        green_input = null;
-        blue_input.dispose();
-        blue_input = null;
-        hue_input.dispose();
-        hue_input = null;
-        saturation_input.dispose();
-        saturation_input = null;
-        brightness_input.dispose();
-        brightness_input = null;
-        hex_input.dispose();
-        hex_input = null;
-        if(config.use_alpha)
-            alpha_input.dispose();
-        alpha_input = null;
+        controls.color_wheel.dispose();
+        controls.color_wheel = null;
+        controls.brightness_slider.dispose();
+        controls.brightness_slider = null;
+        controls.tab_selection_buttons = null;
+        controls.red_input.dispose();
+        controls.red_input = null;
+        controls.green_input.dispose();
+        controls.green_input = null;
+        controls.blue_input.dispose();
+        controls.blue_input = null;
+        controls.hue_input.dispose();
+        controls.hue_input = null;
+        controls.saturation_input.dispose();
+        controls.saturation_input = null;
+        controls.brightness_input.dispose();
+        controls.brightness_input = null;
+        controls.hex_input.dispose();
+        controls.hex_input = null;
+        if(config.useAlpha)
+            controls.alpha_input.dispose();
+        controls.alpha_input = null;
+
+        // dispose variables   
+        config = null;
+        self = null;
+        controls = null;
+        eventHandlers = null;
+        eventListeners = null;
+        utils = null;
+
         // dispose functions
         emit = null;
         init = null;
         bindEvents = null;
         unbindEvents = null;
+
         // dispose all object members
         for (var member in this) delete this[member];
     };
 
 
     /**
-     * HSVa color representation model.
-     * @param {Number} hue
-     *  The hue in the set [0, 360]
-     * @param {Number} saturation
-     *  The saturation in the set [0, 100]
-     * @param {Number} brightness
-     *  The brightness in the set [0, 100]
-     * @param {Number} alpha
-     *  The alpha in the set [0, 255]
+     * HSVa color representation model
+     * 
+     * @param {Number} h Hue value (the hue in the set [0, 360])
+     * @param {Number} s Saturation value (the saturation in the set [0, 100])
+     * @param {Number} v Brightness value (the brightness in the set [0, 100])
+     * @param {Number} a Alpha value (the alpha in the set [0, 255])
      */
     function HSVaColor(h = 360, s = 0, v = 100, a = 255) {
+        // properties
         this.h = h;
         this.s = s;
         this.v = v;
         this.a = a;
 
-        Object.assign(HSVaColor.prototype, {
-            fromHSVa( h = 0, s = 0, v = 0, a = 255) {
-                this.h = h;
-                this.s = s;
-                this.v = v;
-                this.a = a;
-                return this;
-            },
-            toHSVa() {
-                let mapper = (original, next) => (precision = -1) => {
-                    return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
-                };
-                let hsva = [this.h, this.s, this.v, this.a];
-                hsva.toString = mapper(hsva, arr => `hsva(${arr[0]}, ${arr[1]}%, ${arr[2]}%, ${this.a})`);
-                return hsva;
-            },
-            fromHSLa(h, s, l, a = 255) {
-                let hsv = utils.hslToHsv(h, s, l);
+        // private variables
+        let eventListeners = {
+            change: [],
+        };
 
-                if(hsv != null){
-                    this.h = hsv[0] || 0;
-                    this.s = hsv[1] || 0;
-                    this.v = hsv[2] || 0;
-                    this.a = a;
-                }
-                else{
-                    console.error('Error while parsing hsl into hsv');
-                }
-                return this;
-            },
-            toHSLa() {
-                let mapper = (original, next) => (precision = -1) => {
-                    return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
-                };
-                let hsla = [...utils.hsvToHsl(this.h, this.s, this.v), this.a];
-                hsla.toString = mapper(hsla, arr => `hsla(${arr[0]}, ${arr[1]}%, ${arr[2]}%, ${this.a})`);
-                return hsla;
-            },
-            fromRGBa(r = 0, g = 0, b = 0, a = 255) {
-                //..
-                let hsv = utils.rgbToHsv(r, g, b);
-
-                if(hsv != null){
-                    this.h = hsv[0] || 0;
-                    this.s = hsv[1] || 0;
-                    this.v = hsv[2] || 0;
-                    this.a = a;
-                }
-                else{
-                    console.error('Error while parsing rgb into hsv');
-                }
-                return this;
-            },
-            toRGBa() {
-                let mapper = (original, next) => (precision = -1) => {
-                    return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
-                };
-                let rgba = [...utils.hsvToRgb(this.h, this.s, this.v), this.a];
-                rgba.toString = mapper(rgba, arr => `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, ${this.a})`);
-                return rgba;
-            },
-            fromHEX(hex, a = 255) {
-                hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
-                //..
-                let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
-                if(hsv != null){
-                    this.h = hsv[0] || 0;
-                    this.s = hsv[1] || 0;
-                    this.v = hsv[2] || 0;
-                    this.a = a;
-                }
-                else{
-                    console.error('Error while parsing hex into hsv');
-                }
-                return this;
-            },
-            toHEX() {
-                let hex = utils.hsvToHex(this.h, this.s, this.v);
-                return `#${hex.join('').toUpperCase()}`;
-            }
-        });
 
         /**
-         * The function of ..
-         **/
+         * Event emitter function
+         * 
+         * @param {String} event Event name 
+         * @param {Any} args Argument list
+         */
+        let emit = function(event, ...args) {
+            eventListeners[event].forEach(cb => cb(...args, self));
+        }
+
+        /**
+         * Event subscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function
+         */
+        this.on = function(event, fn) {
+            eventListeners[event] = eventListeners[event] || [];
+            eventListeners[event].push(fn);
+            return this;
+        }
+
+        /**
+         * Event unsubscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function  
+         */
+        this.off = function(event, fn) {
+            const functions = (eventListeners[event] || []);
+            const index = functions.indexOf(fn);
+            if (~index)
+                functions.splice(index, 1);
+            return this;
+        } 
+
+
+        /**
+         * Creates color from HSVa data
+         * 
+         * @param {Number} h Hue value
+         * @param {Number} s Saturation value
+         * @param {Number} v Brightness value
+         * @param {Number} a Alpha value
+         * 
+         * @returns HSVa color representation model
+         */
+         this.fromHSVa = function( h = 0, s = 0, v = 0, a = 255) {
+            this.h = h;
+            this.s = s;
+            this.v = v;
+            this.a = a;
+            emit('change', this);
+            return this;
+        };
+        /**
+         * Gets color data in HSV representation
+         * 
+         * @returns HSV color data as an array with the values ​​of each channel
+         */
+        this.toHSV = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let hsv = [this.h, this.s, this.v];
+            hsv.toString = mapper(hsv, arr => `hsv(${arr[0]}, ${arr[1]}%, ${arr[2]}%)`);
+            return hsv;
+        };
+        /**
+         * Gets color data in HSVa representation
+         * 
+         * @returns HSVa color data as an array with the values ​​of each channel.
+         */
+        this.toHSVa = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let hsva = [this.h, this.s, this.v, this.a];
+            hsva.toString = mapper(hsva, arr => `hsva(${arr[0]}, ${arr[1]}%, ${arr[2]}%, ${this.a})`);
+            return hsva;
+        };
+        /**
+         * Creates color from HSLa data
+         * 
+         * @param {Number} h Hue value
+         * @param {Number} s Saturation value
+         * @param {Number} l Lightness value
+         * @param {Number} a Alpha value
+         * 
+         * @returns HSVa color representation model
+         */
+        this.fromHSLa = function(h, s, l, a = 255) {
+            let hsv = utils.hslToHsv(h, s, l);
+            if(hsv != null){
+                this.h = hsv[0] || 0;
+                this.s = hsv[1] || 0;
+                this.v = hsv[2] || 0;
+                this.a = a;
+            }
+            else{
+                console.error('Error while parsing hsl into hsv');
+            }
+            emit('change', this);
+            return this;
+        };
+        /**
+         * Gets color data in HSL representation
+         * 
+         * @returns HSL color data as an array with the values ​​of each channel
+         */
+        this.toHSL = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let hsl = [...utils.hsvToHsl(this.h, this.s, this.v)];
+            hsl.toString = mapper(hsl, arr => `hsl(${arr[0]}, ${arr[1]}%, ${arr[2]}%)`);
+            return hsl;
+        };
+        /**
+         * Gets color data in HSLa representation
+         * 
+         * @returns HSLa color data as an array with the values ​​of each channel
+         */
+        this.toHSLa = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let hsla = [...utils.hsvToHsl(this.h, this.s, this.v), this.a];
+            hsla.toString = mapper(hsla, arr => `hsla(${arr[0]}, ${arr[1]}%, ${arr[2]}%, ${this.a})`);
+            return hsla;
+        };
+        /**
+         * Creates color from RGBa data
+         * 
+         * @param {Number} r Red channel value
+         * @param {Number} g Green channel value
+         * @param {Number} b Blue channel value
+         * @param {Number} a Alpha value
+         * 
+         * @returns HSVa color representation model
+         */
+        this.fromRGBa = function(r = 0, g = 0, b = 0, a = 255) {
+            let hsv = utils.rgbToHsv(r, g, b);
+            if(hsv != null){
+                this.h = hsv[0] || 0;
+                this.s = hsv[1] || 0;
+                this.v = hsv[2] || 0;
+                this.a = a;
+            }
+            else{
+                console.error('Error while parsing rgb into hsv');
+            }
+            emit('change', this);
+            return this;
+        };
+        /**
+         * Gets color data in RGB representation
+         * 
+         * @returns RGB color data as an array with the values ​​of each channel
+         */
+        this.toRGB = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let rgb = [...utils.hsvToRgb(this.h, this.s, this.v)];
+            rgb.toString = mapper(rgb, arr => `rgb(${arr[0]}, ${arr[1]}, ${arr[2]})`);
+            return rgb;
+        };
+        /**
+         * Gets color data in RGBa representation
+         * 
+         * @returns RGBa color data as an array with the values ​​of each channel
+         */
+        this.toRGBa = function() {
+            let mapper = (original, next) => (precision = -1) => {
+                return next(~precision ? original.map(v => Number(v.toFixed(precision))) : original);
+            };
+            let rgba = [...utils.hsvToRgb(this.h, this.s, this.v), this.a];
+            rgba.toString = mapper(rgba, arr => `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, ${this.a})`);
+            return rgba;
+        };
+        /**
+         * Creates color from HEX data
+         * 
+         * @param {Number} hex Hex value
+         * @param {Number} a Alpha value
+         * 
+         * @returns HSVa color representation model
+         */
+        this.fromHEX = function(hex, a = 255) {
+            hex = hex.trim().toLowerCase().replace(/ /g, '').replace(/[^A-Za-z0-9\s]/g,'');
+            let hsv = utils.hexToHsv(hex.padEnd(6, "0"));
+            if(hsv != null){
+                this.h = hsv[0] || 0;
+                this.s = hsv[1] || 0;
+                this.v = hsv[2] || 0;
+                this.a = a;
+            }
+            else{
+                console.error('Error while parsing hex into hsv');
+            }
+            emit('change', this);
+            return this;
+        };
+        /**
+         * Gets color data in HEX representation
+         * 
+         * @returns HEX color data as string
+         */
+        this.toHEX = function() {
+            let hex = utils.hsvToHex(this.h, this.s, this.v);
+            return `#${hex.join('').toUpperCase()}`;
+        };
+        
+
+        /**
+         * Control dispose function
+         */
         this.dispose = function () {
+            // dispose event listeners
+            eventListeners.change.splice(0, eventListeners.change.length);
+            eventListeners.change = null;
+
+            // dispose functions
+            emit = null;
+
             // dispose all object members
             for (var member in this) delete this[member];
         };
     }
     
     /**
-     * ..
+     * Color wheel control creation function
+     *
+     * @param {Object} color_picker Color picker control
      */
-    function WheelControl() {
-        // private values ​​of the wheel control
-        let container = color_picker_control.root.querySelector('.color-picker-wheel-control'),
+    function ColorWheelControl({ color_picker = null }) {
+        // private variables
+        let self = this,
+            container = color_picker.root.querySelector('.color-picker-wheel-control'),
             canvas = container.querySelector('canvas'),
             thumb = container.querySelector('.color-picker-wheel-control-thumb'),
-            is_mouse_down = false,
-            thumb_mousedown_handler,
-            canvas_mousedown_handler,
-            document_mousemove_handler,
-            document_mouseup_handler,
-            self = this,
-            color_wheel,
+            colorGradient,
+            isMouseDown = false,
+            eventHandlers = {
+                thumb_mousedown: null,
+                canvas_mousedown: null,
+                document_mousemove: null,
+                document_mouseup: null,
+            },
             eventListeners = {
                 change: []
             };
 
-
-        // public values ​​of the wheel control
+        // properties
         this.values = {};
-
-        // hue value property
-        let _hue = color_picker_control.color.h;
+        let _hue = color_picker.color.h;
         Object.defineProperty(this.values, 'hue', {
-            // getter function
             get: function() { 
                 return _hue; 
             },
-            //setter function
             set: function(v){
-                // if the set value is greater than the maximum value, then set the maximum value
-                if(v > 360)
-                    v = 360;
-                // if the set value is less than the maximum value, then set the minimum value
-                if(v < 0)
-                    v = 0;
-                //..
-                _hue = v;
-                //..
-                self.update();
-                // trigger value changed event
-                emit('change', self.values);
+                if(v != null){
+                    // if the set value is greater than the maximum value, then set the maximum value
+                    if(v > 360)
+                        v = 360;
+                    // if the set value is less than the maximum value, then set the minimum value
+                    if(v < 0)
+                        v = 0;
+                    // update property value
+                    _hue = v;
+                    // update control
+                    self.update();
+                }
             },
             enumerable: true,
             configurable: true
         });
-
-        // saturation value property
-        let _saturation = color_picker_control.color.s;
+        let _saturation = color_picker.color.s;
         Object.defineProperty(this.values, 'saturation', {
-            // getter function
             get: function() { 
                 return _saturation; 
             },
-            //setter function
             set: function(v){
-                // if the set value is greater than the maximum value, then set the maximum value
-                if(v > 100)
-                    v = 100;
-                // if the set value is less than the maximum value, then set the minimum value
-                if(v < 0)
-                    v = 0;
-                //..
-                _saturation = v;
-                //..
-                self.update();
-                // trigger value changed event
-                emit('change', self.values);
+                if(v != null){
+                    // if the set value is greater than the maximum value, then set the maximum value
+                    if(v > 100)
+                        v = 100;
+                    // if the set value is less than the maximum value, then set the minimum value
+                    if(v < 0)
+                        v = 0;
+                    // update property value
+                    _saturation = v;
+                    // update control
+                    self.update();
+                }
             },
             enumerable: true,
             configurable: true
         });
     
+
         /**
-         * Event emmiter function
-         * @param {String} event  
-         *  Event name
-         * @param {Any} args  
-         *  Event data
+         * Event emitter  function
+         * 
+         * @param {String} event Event name 
+         * @param {Any} args Argument list
          */
         let emit = function(event, ...args) {
             eventListeners[event].forEach(cb => cb(...args, self));
         }
     
         /**
-         * Event sundcribetion function
-         * @param {String} event  
-         *  Event name
-         * @param {Function} fn  
-         *  Event function
+         * Event subscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function
          */
         this.on = function(event, fn) {
+            eventListeners[event] = eventListeners[event] || [];
             eventListeners[event].push(fn);
             return this;
         }
     
         /**
-         * Event unsundcribetion function
-         * @param {String} event  
-         *  Event name
-         * @param {Function} fn  
-         *  Event function
+         * Event unsubscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function  
          */
         this.off = function(event, fn) {
             const functions = (eventListeners[event] || []);
@@ -913,202 +1248,215 @@ function ColorPickerControl(cfg) {
 
 
         /**
-         * Wheel control initialization function.
-         * Initializing a color wheel gradient, draw control's canvas with color wheel gradient, updates thumb element and bind events to ui.
-        **/
-        let init = function () {
-            // color wheel initialization
-            initColorWheel(()=>{
-                // draw control's canvas
-                drawCanvas();
-                // update thumb element
-                updateThumb();
-                // bind events to ui
-                bindEvents();
-                // draw control's helpers
-                if(color_picker_control.debug)
-                    drawHelpers();
-            });     
+         * Color wheel control initialization function.
+         * 
+         * Creates and updates control content. Binds events to ui.
+         */
+        let init = async function () {
+            // create color gradient
+            await createColorGradient();
+            // draw control's canvas
+            drawCanvas();
+            // update thumb element
+            updateThumb();
+            // bind events to ui
+            bindEvents();
         };
 
         /**
-         * Function to initialize a color wheel gradient.
-         * Creating a color wheel image for later use on the control's canvas.
-        **/
-        let initColorWheel = function (callback) {
-            // create temporary canvas element
-            let can = document.createElement("canvas");
-            // set canvas size
-            can.height = can.width = 512;
-            // get canvas context
-            let ctx = can.getContext("2d");
-            // calculate canvas radius
-            let radius = can.width / 2;
-            // set loop step
-            let step = 1 / radius;
-            // clear canvas
-            ctx.clearRect(0, 0, can.width, can.height);
-            // set center points
-            let cx = radius;
-            let cy = radius;
-            // loop around circle
-            for(let i = 0; i < 360; i += step) {
-                // get angle in radians
-                let rad = i * (2 * Math.PI) / 360;
-                // get line direction from center
-                let x = radius * Math.cos(rad),
-                    y = radius * Math.sin(rad);
-                // set stroke style
-                ctx.strokeStyle = 'hsl(' + i + ', 100%, 50%)';
-                // draw color line
+         * Color gradient creation function.
+         * 
+         * Creates a color gradient image for later use on the control's canvas.
+         */
+        let createColorGradient = async function () {
+            return new Promise((resolve, reject) => {
+                // create temporary canvas element
+                let can = document.createElement("canvas");
+
+                // set canvas size
+                can.width = can.height = 512;
+
+                // get canvas context
+                let ctx = can.getContext("2d");
+
+                // calculate canvas radius
+                let radius = can.width / 2;
+
+                // set loop step
+                let step = 1 / radius;
+
+                // clear canvas
+                ctx.clearRect(0, 0, can.width, can.height);
+
+                // set center points
+                let cx = radius;
+                let cy = radius;
+
+                // draw hue gradient
+                for(let i = 0; i < 360; i += step) {
+                    // get angle in radians
+                    let rad = i * (2 * Math.PI) / 360;
+
+                    // get line direction from center
+                    let x = radius * Math.cos(rad),
+                        y = radius * Math.sin(rad);
+
+                    // set stroke style
+                    ctx.strokeStyle = 'hsl(' + i + ', 100%, 50%)';
+
+                    // draw color line
+                    ctx.beginPath();
+                    ctx.moveTo(radius, radius);
+                    ctx.lineTo(cx + x, cy + y);
+                    ctx.stroke();
+                }
+
+                // draw saturation gradient
+                let grd = ctx.createRadialGradient(cx,cy,0,cx,cx,radius);
+                grd.addColorStop(0,'rgba(255, 255, 255, 1)');
+                grd.addColorStop(1,'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = grd;
                 ctx.beginPath();
-                ctx.moveTo(radius, radius);
-                ctx.lineTo(cx + x, cy + y);
-                ctx.stroke();
-            }
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2, true);
+                ctx.closePath();
+                ctx.fill();
 
-            // draw saturation gradient
-            let grd = ctx.createRadialGradient(cx,cy,0,cx,cx,radius);
-            grd.addColorStop(0,'rgba(255, 255, 255, 1)');
-            grd.addColorStop(1,'rgba(255, 255, 255, 0)');
-            ctx.fillStyle = grd;
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2, true);
-            ctx.closePath();
-            ctx.fill();
-            // draw circle border
-            ctx.beginPath();
-            ctx.strokeStyle = "rgb(38, 41, 50)";
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.stroke();
-            // create image and load canvas result into it
-            color_wheel = new Image();
-            color_wheel.onload = function() {
-                callback();
-            }
-            color_wheel.src = can.toDataURL();
+                // draw circle border
+                ctx.beginPath();
+                ctx.strokeStyle = "rgb(38, 41, 50)";
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // create image and load canvas result into it
+                colorGradient = new Image();
+                colorGradient.onload = () => resolve();
+                colorGradient.src = can.toDataURL();
+            });
         };
 
         /**
-         * The function of drawing control's canvas with color wheel gradient and applying brightness filter
-        **/
+         * Canvas drawing function.
+         * 
+         * Draws opacity pattern, hue gradient, saturation gradient and brightness layer.
+         */
         let drawCanvas = function () {
             // get the size of the canvas and its position relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
+
             // update canvas size based received values
             canvas.width = canvas.height = canvas_bb.width;
+
             // get canvas context
             let ctx = canvas.getContext("2d");
+
             // rotate canvas context to 90 degrees
             ctx.translate(canvas.width/2, canvas.height/2);
             ctx.rotate(90 * Math.PI / 180);
             ctx.translate(-canvas.width/2, -canvas.height/2);
-            
 
-            
-                //ctx.imageSmoothingEnabled = true;
-                
-                
-                
-                ctx.beginPath();
-                ctx.arc(canvas.width/2, canvas.width/2, canvas.width/2, 0, Math.PI*2);
-                ctx.clip();
-                ctx.closePath();
-                // drawing multiple times on this clipped area will increase artifacts
+            // create clipping circle
+            ctx.beginPath();
+            ctx.arc(canvas.width/2, canvas.width/2, canvas.width/2, 0, Math.PI*2);
+            ctx.clip();
+            ctx.closePath();
 
-            // creating opacity pattern
+            // create opacity pattern
             let opacityPattern = document.createElement("canvas");
-                // set cell size to 10 pixels
-                let cell_size = 10;
-                // set the size of the opacity pattern to two cells in height and in width
-                opacityPattern.width = cell_size * 2;
-                opacityPattern.height = cell_size * 2;
-                // get opacity pattern context
-                var opacityPatternContext = opacityPattern.getContext("2d");
-                // set cells colors
-                let cell_1_color = 'rgba(255, 255, 255, 1)', cell_2_color = 'rgba(205, 205,205, 1)';
-                // draw first cell
-                opacityPatternContext.beginPath();
-                opacityPatternContext.fillStyle = cell_1_color;
-                opacityPatternContext.fillRect(0, 0, cell_size, cell_size);
-                opacityPatternContext.closePath();
-                // draw second cell
-                opacityPatternContext.beginPath();
-                opacityPatternContext.fillStyle = cell_2_color;
-                opacityPatternContext.fillRect(cell_size, 0, cell_size, cell_size);
-                opacityPatternContext.closePath();
-                // draw third cell
-                opacityPatternContext.beginPath();
-                opacityPatternContext.fillStyle = cell_2_color;
-                opacityPatternContext.fillRect(0, cell_size, cell_size, cell_size);
-                opacityPatternContext.closePath();
-                // draw fourth cell
-                opacityPatternContext.beginPath();
-                opacityPatternContext.fillStyle = cell_1_color;
-                opacityPatternContext.fillRect(cell_size, cell_size, cell_size, cell_size);
-                opacityPatternContext.closePath();
-            
-                // add opacity pattern on the canvas
-                var opacity_pattern = ctx.createPattern(opacityPattern, "repeat");
 
-                // draw an opacity pattern on the canvas
-                ctx.beginPath();
-                ctx.fillStyle = opacity_pattern;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.closePath();
+            // set cell size to 10 pixels
+            let cell_size = 10;
 
+            // set the size of the opacity pattern to two cells in height and in width
+            opacityPattern.width = cell_size * 2;
+            opacityPattern.height = cell_size * 2;
 
-                // applying brightness filter to canvas context
-                ctx.filter = 'brightness(' + color_picker_control.color.v + '%)';
-                
+            // get opacity pattern context
+            let opacityPatternContext = opacityPattern.getContext("2d");
 
-                //..
-                ctx.beginPath();
-                //ctx.strokeStyle = "rgb(38, 41, 50)";
-                ctx.strokeStyle = "rgb(217, 214, 205)";
-                ctx.arc(canvas.width/2, canvas.width/2, canvas.width/2, 0, Math.PI*2);
-                ctx.stroke();
-                ctx.closePath();
-                   
-                
-                //..
-                ctx.globalAlpha = color_picker_control.color.a / 255;
-                // draw color wheel gradient to canvas context
-                ctx.drawImage(color_wheel, 0, 0, canvas.width, canvas.height);
+            // set cells colors
+            let cell_1_color = 'rgba(255, 255, 255, 1)', cell_2_color = 'rgba(205, 205,205, 1)';
+
+            // draw first cell
+            opacityPatternContext.beginPath();
+            opacityPatternContext.fillStyle = cell_1_color;
+            opacityPatternContext.fillRect(0, 0, cell_size, cell_size);
+            opacityPatternContext.closePath();
+            // draw second cell
+            opacityPatternContext.beginPath();
+            opacityPatternContext.fillStyle = cell_2_color;
+            opacityPatternContext.fillRect(cell_size, 0, cell_size, cell_size);
+            opacityPatternContext.closePath();
+            // draw third cell
+            opacityPatternContext.beginPath();
+            opacityPatternContext.fillStyle = cell_2_color;
+            opacityPatternContext.fillRect(0, cell_size, cell_size, cell_size);
+            opacityPatternContext.closePath();
+            // draw fourth cell
+            opacityPatternContext.beginPath();
+            opacityPatternContext.fillStyle = cell_1_color;
+            opacityPatternContext.fillRect(cell_size, cell_size, cell_size, cell_size);
+            opacityPatternContext.closePath();
+
+            // add opacity pattern on the canvas context
+            let opacity_pattern = ctx.createPattern(opacityPattern, "repeat");
+
+            // draw an opacity pattern on the canvas
+            ctx.beginPath();
+            ctx.fillStyle = opacity_pattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.closePath(); 
+
+            // draw the border of the color wheel
+            ctx.beginPath();
+            ctx.strokeStyle = "rgb(217, 214, 205)";
+            ctx.arc(canvas.width/2, canvas.width/2, canvas.width/2, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.closePath();   
+
+            // set color wheel transparency level
+            ctx.globalAlpha = color_picker.color.a / 255;
+
+            // draw color gradient to canvas context
+            ctx.drawImage(colorGradient, 0, 0, canvas.width, canvas.height);
+
+            // set color wheel brightness level
+            ctx.globalAlpha = Math.abs(1 - (color_picker.color.v / 100));
+
+            // draw color wheel brightness layer to canvas context
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0,  canvas.width, canvas.height);
         };
 
         /**
-         * The function of updating thumb element styles.
-         * Positioning and change background color based on hue and saturation values.
-        **/
+         * Thumb element updating function.
+         * 
+         * Positions element and change background color based on hue and saturation values.
+         */
         let updateThumb = function () {
             // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
             let thumb_bb = utils.getBoundingBox(thumb);
-            
-            // get main color data as rgb
-            var main_color = utils.hsvToRgb(color_picker_control.color.h, color_picker_control.color.s, color_picker_control.color.v);
 
-            // update thumb background color 
-            thumb.style.backgroundColor = "rgb(" + main_color[0] + "," + main_color[1] + "," + main_color[2] + ")";
-            
-            // update thumb position based on hue and saturation values (if it changed ouside)  
-            if(!is_mouse_down){
-                thumb.style.left = (canvas_bb.width / 2) + ((canvas_bb.width / 2)/100*color_picker_control.color.s) * Math.cos(utils.degreesToRadians(color_picker_control.color.h + 90)) - (thumb_bb.width / 2) + 'px';
-                thumb.style.top = (canvas_bb.height / 2) + ((canvas_bb.width / 2)/100*color_picker_control.color.s)  * Math.sin(utils.degreesToRadians(color_picker_control.color.h + 90)) - (thumb_bb.height / 2) + 'px';
+            // update thumb background color
+            thumb.style.backgroundColor = color_picker.color.toRGB().toString();
+
+            // update thumb position based on hue and saturation values (if it changed outside)
+            if(!isMouseDown){
+                thumb.style.left = (canvas_bb.width / 2) + ((canvas_bb.width / 2)/100*color_picker.color.s) * Math.cos(utils.degreesToRadians(color_picker.color.h + 90)) - (thumb_bb.width / 2) + 'px';
+                thumb.style.top = (canvas_bb.height / 2) + ((canvas_bb.width / 2)/100*color_picker.color.s)  * Math.sin(utils.degreesToRadians(color_picker.color.h + 90)) - (thumb_bb.height / 2) + 'px';
             }
-            
+
             // update thumb dataset hue and saturation values
-            thumb.dataset.value1 = color_picker_control.color.h;
-            thumb.dataset.value2 = color_picker_control.color.s;
+            thumb.dataset.value1 = color_picker.color.h;
+            thumb.dataset.value2 = color_picker.color.s;
         };
 
         /**
-         * The function of binding events to ui
-        **/
+         * Event binding function
+         */
         let bindEvents = function () {
-            // initialize thumb element mousedown/touchstart handler
-            thumb_mousedown_handler = function(e){
+            // create mousedown/touchstart event handler for thumb element
+            eventHandlers.thumb_mousedown = function(e){
                 // remove document selection before thumb moving
                 if (document.selection) {
                     document.selection.empty()
@@ -1116,15 +1464,15 @@ function ColorPickerControl(cfg) {
                     window.getSelection().removeAllRanges()
                 }
 
-                // set is_mouse_down flag to true
-                is_mouse_down = true;
+                // set isMouseDown flag to true
+                isMouseDown = true;
             };
-            // add mousedown/touchstart event listeners to thumb element
-            thumb.addEventListener('mousedown', thumb_mousedown_handler, true);
-            thumb.addEventListener('touchstart', thumb_mousedown_handler, true);
+            // add mousedown/touchstart event handler to thumb element
+            thumb.addEventListener('mousedown', eventHandlers.thumb_mousedown, true);
+            thumb.addEventListener('touchstart', eventHandlers.thumb_mousedown, true);
 
-            // initialize canvas element mousedown/touchstart handler
-            canvas_mousedown_handler = function(e){
+            // create mousedown/touchstart event handler for canvas element
+            eventHandlers.canvas_mousedown = function(e){
                 // remove document selection before thumb moving
                 if (document.selection) {
                     document.selection.empty()
@@ -1132,8 +1480,8 @@ function ColorPickerControl(cfg) {
                     window.getSelection().removeAllRanges()
                 }
 
-                // set is_mouse_down flag to true
-                is_mouse_down = true;
+                // set isMouseDown flag to true
+                isMouseDown = true;
 
                 // get horizontal and vertical mouse points, relative to the document
                 let pageX = e.touches ? e.touches[0].pageX : e.pageX;
@@ -1142,18 +1490,18 @@ function ColorPickerControl(cfg) {
                 // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
                 let canvas_bb = utils.getBoundingBox(canvas);
                 let thumb_bb = utils.getBoundingBox(thumb);
-
+                
                 // get canvas radius and prepare values to calculation of hue and saturation based on thumb position
                 let r = canvas_bb.width / 2,
                     x1 = pageX,
                     y1 = pageY,
                     x2 = (canvas_bb.left + canvas_bb.width / 2),
                     y2 = (canvas_bb.top + canvas_bb.height / 2);
-            
+
                 // calculate angle of vector from control center to thumb element
                 let angle = Math.atan2(y1 - y2, x1 - x2) * 360 / (2 * Math.PI) - 90;
                 if(angle < 0) angle += 360;
-
+                
                 // check if thumb element position outside the color wheel
                 if(Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) > r){
                     // set thumb element position on circle border by angle and radius
@@ -1168,35 +1516,35 @@ function ColorPickerControl(cfg) {
                 // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
                 canvas_bb = utils.getBoundingBox(canvas);
                 thumb_bb = utils.getBoundingBox(thumb);
-
+                
                 // calculate length of vector from control center to thumb element
                 let dx = ((canvas_bb.left + canvas_bb.width / 2) - (thumb_bb.left + thumb_bb.width / 2)), 
                     dy = ((canvas_bb.top + canvas_bb.height / 2) - (thumb_bb.top + thumb_bb.height / 2)), 
                     scale_length = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-
-                // calculate hue and saturation values based on thumb position
+                
+                    // calculate hue and saturation values based on thumb position
                 let hue = angle;
                 let saturation = Math.min(100, Math.ceil(scale_length / r * 100));
-
+                
                 // update control hue and saturation values
                 self.values.hue = hue;
                 self.values.saturation = saturation;
-
+                
                 // update thumb dataset hue and saturation values
                 thumb.dataset.value1 = hue;
                 thumb.dataset.value2 = saturation;
-
-                // emmit change event
+                
+                // trigger change event
                 emit('change', self.values);
             };
-            // add mousedown/touchstart event listeners to canvas element
-            canvas.addEventListener('mousedown', canvas_mousedown_handler, true);
-            canvas.addEventListener('touchstart', canvas_mousedown_handler, true);
+            // add mousedown/touchstart event handler to canvas element
+            canvas.addEventListener('mousedown', eventHandlers.canvas_mousedown, true);
+            canvas.addEventListener('touchstart', eventHandlers.canvas_mousedown, true);
 
-            // initialize document mousemove/touchmove handler
-            document_mousemove_handler = function(e){
-                // check if is_mouse_down flag has true value
-                if (is_mouse_down) {
+            // create mousemove/touchmove event handler for document
+            eventHandlers.document_mousemove = function(e){
+                // check if isMouseDown flag has true value
+                if (isMouseDown) {
                     // prevent scroll
                     e.preventDefault();
                     e.stopImmediatePropagation();
@@ -1252,274 +1600,176 @@ function ColorPickerControl(cfg) {
                     thumb.dataset.value1 = hue;
                     thumb.dataset.value2 = saturation;
 
-                    // emmit change event
+                    // trigger change event
                     emit('change', self.values);
                 }
             };
-            // add mousemove/touchmove event listeners to document
-            document.addEventListener('mousemove', document_mousemove_handler, true);
-            document.addEventListener('touchmove', document_mousemove_handler, { passive: false });
+            // add mousemove/touchmove event handler to document
+            document.addEventListener('mousemove', eventHandlers.document_mousemove, true);
+            document.addEventListener('touchmove', eventHandlers.document_mousemove, { passive: false });
 
-            // initialize document mouseup/touchend handler
-            document_mouseup_handler = function(e){
-                // set is_mouse_down flag to false
-                is_mouse_down = false;
+            // create mouseup/touchend event handler for document
+            eventHandlers.document_mouseup = function(e){
+                // set isMouseDown flag to false
+                isMouseDown = false;
             };
-            // add mouseup/touchend event listeners to document
-            document.addEventListener('mouseup', document_mouseup_handler, true);
-            document.addEventListener('touchend', document_mouseup_handler, true);
+            // add mouseup/touchend event event handler to document
+            document.addEventListener('mouseup', eventHandlers.document_mouseup, true);
+            document.addEventListener('touchend', eventHandlers.document_mouseup, true);
         }
 
         /**
-         * The function of binding events from ui
-        **/
+         * Event unbinding function
+         */
         let unbindEvents = function () {
             // remove event listeners attached to thumb element
-            thumb.removeEventListener('mousedown', thumb_mousedown_handler, false);
-            thumb.removeEventListener('touchstart', thumb_mousedown_handler, false);
+            thumb.removeEventListener('mousedown', eventHandlers.thumb_mousedown, false);
+            thumb.removeEventListener('touchstart', eventHandlers.thumb_mousedown, false);
+            
             // remove event listeners attached to canvas element
-            canvas.removeEventListener('mousedown', canvas_mousedown_handler, false);
-            canvas.removeEventListener('touchstart', canvas_mousedown_handler, false);
+            canvas.removeEventListener('mousedown', eventHandlers.canvas_mousedown, false);
+            canvas.removeEventListener('touchstart', eventHandlers.canvas_mousedown, false);
+            
             // remove event listeners attached to document
-            document.removeEventListener('mousemove', document_mousemove_handler, false);
-            document.removeEventListener('touchmove', document_mousemove_handler, false);
-            document.removeEventListener('mouseup', document_mouseup_handler, false);
-            document.removeEventListener('touchend', document_mouseup_handler, false);
+            document.removeEventListener('mousemove', eventHandlers.document_mousemove, false);
+            document.removeEventListener('touchmove', eventHandlers.document_mousemove, false);
+            document.removeEventListener('mouseup', eventHandlers.document_mouseup, false);
+            document.removeEventListener('touchend', eventHandlers.document_mouseup, false);
         };
 
         /**
-         * The function of drawing control's helpers
-        **/
-        let drawHelpers = function() {
-            // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
-            let canvas_bb = utils.getBoundingBox(canvas);
-            let thumb_bb = utils.getBoundingBox(thumb);
-            
-            // get canvas context
-            var ctx = canvas.getContext("2d");
-
-            //..
-            ctx.globalAlpha = 1;
-
-            // get canvas radius and prepare values to calculation of hue and saturation based on thumb position
-            let r = canvas_bb.width / 2,
-                x1 = (thumb_bb.left + thumb_bb.width / 2),
-                y1 = (thumb_bb.top + thumb_bb.height / 2),
-                x2 = (canvas_bb.left + canvas_bb.width / 2),
-                y2 = (canvas_bb.top + canvas_bb.height / 2);
-
-            // calculate angle of vector from control center to thumb element
-            let scale_angle = Math.atan2(y1 - y2, x1 - x2) * 360 / (2 * Math.PI) - 90;
-            if(scale_angle < 0) scale_angle += 360;
-
-            // calculate saturation scale length and roatation angle in radians
-            let dx = ((canvas_bb.left + canvas_bb.width / 2) - (thumb_bb.left + thumb_bb.width / 2)),
-                dy = ((canvas_bb.top + canvas_bb.height / 2) - (thumb_bb.top + thumb_bb.height / 2)), 
-                scale_length = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-
-            // if saturation scale length more than 0
-            if(scale_length > 0)
-            {       
-                //#region draw saturation scale helper
-                    // draw a vector to the center of the wheel
-                    ctx.beginPath();
-                    ctx.setLineDash([3, 3]);          
-                    ctx.moveTo(canvas_bb.width / 2, canvas_bb.height / 2);
-                    ctx.lineTo(
-                        canvas_bb.width / 2 + Math.cos(utils.degreesToRadians(scale_angle)) * scale_length, 
-                        canvas_bb.height / 2 + Math.sin(utils.degreesToRadians(scale_angle)) * scale_length, 
-                    );        
-                    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-                    ctx.stroke();
-                    ctx.closePath();
-                //#endregion
-
-                //#region draw hue scale helper
-                    // create hue scale angle pattern
-                    var stripesPattern = document.createElement("canvas");
-                    // set stripes pattern size
-                    stripesPattern.width = 20;
-                    stripesPattern.height = 20;
-                    // get stripes pattern context
-                    var stripesPatternPattern = stripesPattern.getContext("2d");
-                        // draw stripes pattern
-                        stripesPatternPattern.beginPath();
-                        // set colors of stripes
-                        let color1 = "transparent", color2 = 'rgba(0,0,0,0.1)';
-                        // set number of stripes
-                        let numberOfStripes = 20;
-                        // draw stripes
-                        for (var i=0; i < numberOfStripes;i++){
-                            var thickness = 2;
-                            stripesPatternPattern.beginPath();
-                            stripesPatternPattern.strokeStyle = i % 2?color1:color2;
-                            stripesPatternPattern.lineWidth =thickness;
-                            stripesPatternPattern.moveTo(0,i*thickness + thickness/2);
-                            stripesPatternPattern.lineTo(100,i*thickness + thickness/2);
-                            stripesPatternPattern.stroke();
-                        }
-                        stripesPatternPattern.closePath();
-
-                    // add stripes pattern on the canvas
-                    var stripes_pattern = ctx.createPattern(stripesPattern,"repeat");
-            
-                    // draw circle in the center of canvas
-                    ctx.beginPath();
-                    ctx.setLineDash([3, 3]);        
-                    ctx.moveTo(canvas_bb.width/2, canvas_bb.height/2);           
-                    ctx.arc(canvas_bb.width/2, canvas_bb.height/2, Math.min(r/2, scale_length), 0, utils.degreesToRadians(scale_angle), false);
-                    ctx.closePath();
-                    ctx.strokeStyle = 'rgba(0,0,0,0.2)';         
-                    ctx.fillStyle = stripes_pattern;
-                    ctx.fill();
-                    ctx.stroke();
-                //#endregion
-
-                //#region draw hue and saturation values
-                    // rotate canvas context to 90 degrees
-                    ctx.translate(canvas.width/2, canvas.height/2);
-                    ctx.rotate(-90 * Math.PI / 180);
-                    ctx.translate(-canvas.width/2, -canvas.height/2);
-                    // draw hue text value
-                    ctx.beginPath();
-                    ctx.font = "8px serif";
-                    ctx.fillStyle = 'rgba(0,0,0,0.8)'; 
-                    ctx.fillText("H: " + Math.ceil(Math.min(360, color_picker_control.color.h)), canvas_bb.width / 2 - 8, 16);
-                    ctx.closePath();
-                    // draw saturation text value
-                    ctx.beginPath();
-                    ctx.font = "8px serif";
-                    ctx.fillStyle = 'rgba(0,0,0,0.8)'; 
-                    ctx.fillText("S: " + Math.ceil(Math.min(100, color_picker_control.color.s)), canvas_bb.width / 2 - 8, canvas_bb.height - 20 + 8);
-                    ctx.closePath();
-                //#endregion
-            }      
-        }
-
-        /**
-         * The function of updating wheel control
-        **/
+         * Control content update function
+         */
         this.update = function (value) {
-            // draw control's canvas
+            // redraw control's canvas
             drawCanvas();
             // update thumb element
             updateThumb();
-            // draw control's helpers
-            if(color_picker_control.debug)
-                drawHelpers();
         };
 
         /**
-         * The function of disposing wheel control
-        **/
+         * Control dispose function
+         */
         this.dispose = function () {
             // unbind events from ui
             unbindEvents();
-            // dispose handlers
-            thumb_mousedown_handler = null;
-            canvas_mousedown_handler = null;
-            document_mousemove_handler = null;
-            document_mouseup_handler = null;
+
             // dispose properties
-            //this.values = null;
+            this.values = null;
             _hue = null;
-            _saturation = null;    
+            _saturation = null;  
+
+            // dispose event handlers
+            eventHandlers.thumb_mousedown = null;
+            eventHandlers.canvas_mousedown = null;
+            eventHandlers.document_mousemove = null;
+            eventHandlers.document_mouseup = null;
+
+            // dispose event listeners
+            eventListeners.change.splice(0, eventListeners.change.length);
+            eventListeners.change = null;
+
             // dispose variables  
+            self = null;
             container = null;
             canvas = null; 
             thumb = null;
-            is_mouse_down = null; 
-            self = null;
-            color_wheel = null;
+            isMouseDown = null; 
+            colorGradient = null;
+            eventHandlers = null;
+            eventListeners = null;
 
+            // dispose functions
+            emit = null;
             init = null;
-            initColorWheel = null;
+            createColorGradient = null;
             drawCanvas = null;
             updateThumb = null;
             bindEvents = null;
             unbindEvents = null;
-            drawHelpers = null;
-            // dispose all control members
+
+            // dispose all object members
             for (var member in this) delete this[member];
         };
 
-        // run initialization of wheel control
+        // run control initialization
         init();
     }
     
     /**
-     * ..
+     * Brightness slider control creation function
+     *
+     * @param {Object} color_picker Color picker control
      */
-    function BrightnessControl() {
-        // private values ​​of the hue control
-        let container = color_picker_control.root.querySelector('.color-picker-brightness-control'),
+    function BrightnessSliderControl({ color_picker = null }) {
+        // private variables
+        let self = this,
+            container = color_picker.root.querySelector('.color-picker-brightness-control'),
             canvas = container.querySelector('canvas'),
             thumb = container.querySelector('.color-picker-brightness-control-thumb'),
-            is_mouse_down = false,
-            thumb_mousedown_handler,
-            canvas_mousedown_handler,
-            document_mousemove_handler,
-            document_mouseup_handler,
-            self = this,
+            isMouseDown = false,
+            eventHandlers = {
+                thumb_mousedown: null,
+                canvas_mousedown: null,
+                document_mousemove: null,
+                document_mouseup: null,
+            },    
             eventListeners = {
                 change: []
             };
 
-        //  value property
-        let _value = color_picker_control.color.v;
+        // properties
+        let _value = color_picker.color.v;
         Object.defineProperty(self, 'value', {
-            // getter function
             get: function() { 
                 return _value; 
             },
-            //setter function
             set: function(v){
-                // if the set value is greater than the maximum value, then set the maximum value
-                if(v > 100)
-                    v = 100;
-                // if the set value is less than the maximum value, then set the minimum value
-                if(v < 0)
-                    v = 0;
-                //..
-                _value = v;
-                //..
-                self.update();
-                // trigger value changed event
-                emit('change', self.value);
+                if(v != null){
+                    // if the set value is greater than the maximum value, then set the maximum value
+                    if(v > 100)
+                        v = 100;
+                    // if the set value is less than the maximum value, then set the minimum value
+                    if(v < 0)
+                        v = 0;
+                    // update property value
+                    _value = v;
+                    // update control
+                    self.update();
+                }
             },
             enumerable: true,
             configurable: true
         });
     
+
         /**
-         * Event emmiter function
-         * @param {String} event  
-         *  Event name
-         * @param {Any} args  
-         *  Event data
+         * Event emitter  function
+         * 
+         * @param {String} event Event name 
+         * @param {Any} args Argument list
          */
         let emit = function(event, ...args) {
             eventListeners[event].forEach(cb => cb(...args, self));
         }
     
         /**
-         * Event sundcribetion function
-         * @param {String} event  
-         *  Event name
-         * @param {Function} fn  
-         *  Event function
+         * Event subscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function
          */
         this.on = function(event, fn) {
+            eventListeners[event] = eventListeners[event] || [];
             eventListeners[event].push(fn);
             return this;
         }
     
         /**
-         * Event unsundcribetion function
-         * @param {String} event  
-         *  Event name
-         * @param {Function} fn  
-         *  Event function
+         * Event unsubscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function  
          */
         this.off = function(event, fn) {
             const functions = (eventListeners[event] || []);
@@ -1532,89 +1782,94 @@ function ColorPickerControl(cfg) {
 
         /**
          * Brightness control initialization function.
-         * Drawing control's canvas, updates thumb element and bind events to ui.
-        **/
+         * 
+         * Creates and updates control content. Binds events to ui.
+         */
         let init = function () {
-            // draw canvas
+            // draw control's canvas
             drawCanvas();
             // update thumb element
             updateThumb();
             // bind events to ui
             bindEvents();
-            // draw control's helpers
-            if(color_picker_control.debug)
-                drawHelpers();
         };
 
         /**
-         * The function of drawing control's canvas with brightness gradient from 100 to 0
-        **/
+         * Canvas drawing function.
+         * 
+         * Draws brightness gradient.
+         */
         let drawCanvas = function () {
             // get the size of the canvas and its position relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
+
             // update canvas size based received values
             canvas.width = canvas_bb.width;
             canvas.height = canvas_bb.height;
+
             // create a canvas gradient
-            var gradient = canvas.getContext("2d").createLinearGradient(0, 0, 0, canvas.height);
+            let gradient = canvas.getContext("2d").createLinearGradient(0, 0, 0, canvas.height);
+            
             // get main color data as rgb with brightness equals 100
-            var start_color = utils.hsvToRgb(color_picker_control.color.h, color_picker_control.color.s, 100);
+            let start_color = utils.hsvToRgb(color_picker.color.h, color_picker.color.s, 100);
             let end_color = [0, 0, 0];
+            
             // add colors to gradient
             gradient.addColorStop(0, "rgb(" + start_color[0] + "," + start_color[1] + "," + start_color[2] + ")");
             gradient.addColorStop(1, "rgb(" + end_color[0] + "," + end_color[1] + "," + end_color[2] + ")");
+            
             // draw gradient on the canvas
             canvas.getContext("2d").fillStyle = gradient;
             canvas.getContext("2d").fillRect(0, 0, canvas.width, canvas.height);
         };
 
         /**
-         * The function of updating thumb element styles.
-         * Positioning and change background color based on brightness value.
-        **/
+         * Thumb element updating function.
+         * 
+         * Positions element and change background color based on hue and saturation values.
+         */
         let updateThumb = function () {
             // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
             let canvas_bb = utils.getBoundingBox(canvas);
             let thumb_bb = utils.getBoundingBox(thumb);
-
-            // get main color data as rgb
-            var main_color = utils.hsvToRgb(color_picker_control.color.h, color_picker_control.color.s, color_picker_control.color.v);
-
-            // update thumb background color 
-            thumb.style.backgroundColor = "rgb(" + main_color[0] + "," + main_color[1] + "," + main_color[2] + ")";
             
-            // set thumb horisontal position in the center of the brightness scale  
+            // update thumb background color 
+            thumb.style.backgroundColor = color_picker.color.toRGB().toString();     
+            
+            // set thumb horizontal position in the center of the brightness scale  
             thumb.style.left = canvas_bb.width / 2 - thumb_bb.width / 2 + 'px';
-            // update thumb position based on hue value (if it changed ouside)  
-            if(!is_mouse_down) {
+            
+            // update thumb position based on hue value (if it changed outside)  
+            if(!isMouseDown) {
                 thumb.style.top = - thumb_bb.height/2 + (canvas_bb.height * ((100 - self.value)/100)) + 'px';
             }
-
+            
             // update thumb dataset value
             thumb.dataset.value = self.value;
         };
 
         /**
-         * The function of binding events to ui
-        **/
+         * Event binding function
+         */
         let bindEvents = function () {
-            // initialize thumb element mousedown/touchstart handler
-            thumb_mousedown_handler = function(e){
+            // create mousedown/touchstart event handler for thumb element
+            eventHandlers.thumb_mousedown = function(e){
                 // remove document selection before thumb moving
                 if (document.selection) {
                     document.selection.empty()
                 } else {
                     window.getSelection().removeAllRanges()
                 }
-                // set is_mouse_down flag to true
-                is_mouse_down = true;    
+
+                // set isMouseDown flag to true
+                isMouseDown = true;    
             };
-            // add mousedown/touchstart event listeners to thumb element
-            thumb.addEventListener('mousedown', thumb_mousedown_handler, true);
-            thumb.addEventListener('touchstart', thumb_mousedown_handler, true);
+            // add mousedown/touchstart event handler to thumb element
+            thumb.addEventListener('mousedown', eventHandlers.thumb_mousedown, true);
+            thumb.addEventListener('touchstart', eventHandlers.thumb_mousedown, true);
 
-            // initialize canvas element mousedown/touchstart handler
-            canvas_mousedown_handler = function(e){
+            // create mousedown/touchstart event handler for canvas element
+            eventHandlers.canvas_mousedown = function(e){
                 // remove document selection before thumb moving
                 if (document.selection) {
                     document.selection.empty()
@@ -1622,8 +1877,8 @@ function ColorPickerControl(cfg) {
                     window.getSelection().removeAllRanges()
                 }
 
-                // set is_mouse_down flag to true
-                is_mouse_down = true;
+                // set isMouseDown flag to true
+                isMouseDown = true;
 
                 // get vertical mouse point, relative to the document
                 let pageY = e.touches ? e.touches[0].pageY : e.pageY;
@@ -1632,18 +1887,17 @@ function ColorPickerControl(cfg) {
                 let canvas_bb = utils.getBoundingBox(canvas);
                 let thumb_bb = utils.getBoundingBox(thumb);
 
-                // set thumb horisontal position in the center of the brightness scale
+                // set thumb horizontal position in the center of the brightness scale
                 thumb.style.left = canvas_bb.width / 2 - thumb_bb.width / 2 + 'px';
 
-                //..
+                // check if the mouse point is within the canvas
                 if(canvas_bb.top <= (pageY + thumb_bb.height / 2) && (pageY + thumb_bb.height / 2) <= (canvas_bb.top + canvas_bb.height)){
                     thumb.style.top = (pageY - canvas_bb.top) + 'px';
                 }
-                else{ //..
-                    //..
+                else{ // otherwise check if the mouse point is above the canvas, align thumb element to the top of the canvas
                     if(canvas_bb.top > (pageY + thumb_bb.height / 2))
                         thumb.style.top = (-thumb_bb.height / 2) + 'px';
-                    else //..
+                    else // otherwise align thumb element to the bottom of the canvas
                         thumb.style.top = (canvas_bb.height - thumb_bb.height / 2) + 'px';
                 }
 
@@ -1659,16 +1913,17 @@ function ColorPickerControl(cfg) {
                 // update thumb dataset brightness value
                 thumb.dataset.value = brightness;
 
-                //emmit change event
+                // trigger change event
                 emit('change', self.value);
             };
-            canvas.addEventListener('mousedown', canvas_mousedown_handler, true);
-            canvas.addEventListener('touchstart', canvas_mousedown_handler, true);
+            // add mousedown/touchstart event handler to canvas element
+            canvas.addEventListener('mousedown', eventHandlers.canvas_mousedown, true);
+            canvas.addEventListener('touchstart', eventHandlers.canvas_mousedown, true);
 
-            // initialize document mousemove/touchmove handler
-            document_mousemove_handler = function(e){
-                // check if is_mouse_down flag has true value
-                if (is_mouse_down) {
+            // create mousemove/touchmove event handler for document
+            eventHandlers.document_mousemove = function(e){
+                // check if isMouseDown flag has true value
+                if (isMouseDown) {
                     // prevent scroll
                     e.preventDefault();
                     e.stopImmediatePropagation();
@@ -1680,18 +1935,17 @@ function ColorPickerControl(cfg) {
                     let canvas_bb = utils.getBoundingBox(canvas);
                     let thumb_bb = utils.getBoundingBox(thumb);
 
-                    //..
+                    // set thumb horizontal position in the center of the brightness scale
                     thumb.style.left = canvas_bb.width / 2 - thumb_bb.width / 2 + 'px';
 
-                    //..
+                    // check if the mouse point is within the canvas
                     if(canvas_bb.top <= (pageY + thumb_bb.height / 2) && (pageY + thumb_bb.height / 2) <= (canvas_bb.top + canvas_bb.height)){
                         thumb.style.top = (pageY - canvas_bb.top) + 'px';
                     }
-                    else{ //..
-                        //..
+                    else{ // otherwise check if the mouse point is above the canvas, align thumb element to the top of the canvas
                         if(canvas_bb.top > (pageY + thumb_bb.height / 2))
                             thumb.style.top = (-thumb_bb.height / 2) + 'px';
-                        else //..
+                        else // otherwise align thumb element to the bottom of the canvas
                             thumb.style.top = (canvas_bb.height - thumb_bb.height / 2) + 'px';
                     }
 
@@ -1707,429 +1961,431 @@ function ColorPickerControl(cfg) {
                     // update thumb dataset brightness value
                     thumb.dataset.value = brightness;
 
-                    //emmit change event
+                    // trigger change event
                     emit('change', self.value);
                 }
             };
-            document.addEventListener('mousemove', document_mousemove_handler, true);
-            document.addEventListener('touchmove', document_mousemove_handler, { passive: false });
+            // add mousemove/touchmove event handler to document
+            document.addEventListener('mousemove', eventHandlers.document_mousemove, true);
+            document.addEventListener('touchmove', eventHandlers.document_mousemove, { passive: false });
 
-            // initialize document mouseup/touchend handler
-            document_mouseup_handler = function(e){
-                // set is_mouse_down flag to false
-                is_mouse_down = false;
+            // create mouseup/touchend event handler for document
+            eventHandlers.document_mouseup = function(e){
+                // set isMouseDown flag to false
+                isMouseDown = false;
             };
-            document.addEventListener('mouseup', document_mouseup_handler, true);
-            document.addEventListener('touchend', document_mouseup_handler, true);
+            // add mouseup/touchend event handler to document
+            document.addEventListener('mouseup', eventHandlers.document_mouseup, true);
+            document.addEventListener('touchend', eventHandlers.document_mouseup, true);
         }
 
         /**
-         * The function of binding events from ui
-        **/
+         * Event unbinding function
+         */
         let unbindEvents = function () {
             // remove event listeners attached to thumb element
-            thumb.removeEventListener('mousedown', thumb_mousedown_handler, false);
-            thumb.removeEventListener('touchstart', thumb_mousedown_handler, false);
+            thumb.removeEventListener('mousedown', eventHandlers.thumb_mousedown, false);
+            thumb.removeEventListener('touchstart', eventHandlers.thumb_mousedown, false);
+            
             // remove event listeners attached to canvas element
-            canvas.removeEventListener('mousedown', canvas_mousedown_handler, false);
-            canvas.removeEventListener('touchstart', canvas_mousedown_handler, false);
+            canvas.removeEventListener('mousedown', eventHandlers.canvas_mousedown, false);
+            canvas.removeEventListener('touchstart', eventHandlers.canvas_mousedown, false);
+            
             // remove event listeners attached to document
-            document.removeEventListener('mousemove', document_mousemove_handler, false);
-            document.removeEventListener('touchmove', document_mousemove_handler, false);
-            document.removeEventListener('mouseup', document_mouseup_handler, false);
-            document.removeEventListener('touchend', document_mouseup_handler, false);
+            document.removeEventListener('mousemove', eventHandlers.document_mousemove, false);
+            document.removeEventListener('touchmove', eventHandlers.document_mousemove, false);
+            document.removeEventListener('mouseup', eventHandlers.document_mouseup, false);
+            document.removeEventListener('touchend', eventHandlers.document_mouseup, false);
         };
 
         /**
-         * The function of drawing control's helpers
-        **/
-        let drawHelpers = function() {
-            // get the sizes of the canvas and thumb elements and the position of these elements relative to the document
-            let canvas_bb = utils.getBoundingBox(canvas);
-            let thumb_bb = utils.getBoundingBox(thumb);
-            
-            // calculate brightness scale length
-            let scale_length = (canvas_bb.top + canvas_bb.height) - (thumb_bb.top + thumb_bb.height / 2);
-
-            // get canvas context
-            var ctx = canvas.getContext("2d");
-
-            // if brightness scale length more than 0
-            if(scale_length > 0)
-            {       
-                //#region draw brightness scale helper
-                    // draw a vector to thumb element position
-                    ctx.beginPath();
-                    ctx.setLineDash([3, 3]);          
-                    ctx.moveTo(canvas_bb.width / 2, canvas_bb.height);
-                    ctx.lineTo(
-                        canvas_bb.width / 2, 
-                        canvas_bb.height - scale_length, 
-                    );        
-                    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-                    ctx.stroke();
-                    ctx.closePath();
-                //#endregion
-            }      
-        }
-
-        /**
-         * The function of updating brightness control
-        **/
+         * Control content update function
+         */
         this.update = function (value) {
-            // draw control's canvas
+            // redraw control's canvas
             drawCanvas();
             // update thumb element
             updateThumb();
-            // draw control's helpers
-            if(color_picker_control.debug)
-                drawHelpers();
         };
 
         /**
-         * The function of disposing wheel control
-        **/
+         * Control dispose function
+         */
         this.dispose = function () {
             // unbind events from ui
             unbindEvents();
-            // dispose handlers
-            thumb_mousedown_handler = null;
-            canvas_mousedown_handler = null;
-            document_mousemove_handler = null;
-            document_mouseup_handler = null;
-            // dispose properties
-            _value = null;
-            //this.value = null;
-            // dispose variables   
-            container = null;  
-            canvas = null;
-            thumb = null; 
-            self = null;
-            is_mouse_down = null;
 
+            // dispose properties
+            this.value = null;
+            _value = null;
+
+            // dispose event handlers
+            eventHandlers.thumb_mousedown = null;
+            eventHandlers.canvas_mousedown = null;
+            eventHandlers.document_mousemove = null;
+            eventHandlers.document_mouseup = null;
+
+            // dispose event listeners
+            eventListeners.change.splice(0, eventListeners.change.length);
+            eventListeners.change = null;
+
+            // dispose variables  
+            self = null;
+            container = null;
+            canvas = null; 
+            thumb = null;
+            isMouseDown = null; 
+            eventHandlers = null;
+            eventListeners = null;
+
+            // dispose functions
+            emit = null;
             init = null;
             drawCanvas = null;
             updateThumb = null;
             bindEvents = null;
             unbindEvents = null;
-            drawHelpers = null;
-            // dispose all control members
+
+            // dispose all object members
             for (var member in this) delete this[member];
         };
 
-        // run initialization of brightness control
+        // run control initialization
         init();
     };
     
     /**
-     * ..
+     * Number input control creation function
+     *
+     * @param {Object} root Element to which the control is bound
      */
-    function RangeInputControl(root) {
-        // declare properties of the control
+    function NumberInputControl(root) {
+        // properties
         this.root = root;
         this.min = Number(root.dataset.min);
         this.max = Number(root.dataset.max);
         this.step = Number(root.dataset.step) || 1;
-    
-        // declare private variables
+
+        // private variables
         let self = this,
             range_input = root.querySelector('.range-input'),
             range_progress = root.querySelector('.range-input-progress'),
             range_value = root.querySelector('.range-input-value'),
             folding_screen = document.createElement('div'),
-            change_on_key_input = false,
-            change_on_mouse_move = false,
-            last_mouse_position,
-            root_mousedown_handler,
-            input_focusout_handler,
-            input_keyup_handler,
+            changeOnKeyDown = false,
+            changeOnMouseMove = false,
+            lastMousePosition = null,
+            eventHandlers = {
+                root_mousedown: null,
+                input_focusout: null,
+                input_keyup: null,
+            },
             eventListeners = {
                 focus: [],
                 blur: [],
                 change: []
             };
-        
-        // value property
+
+        // properties
         let _value = Number(root.dataset.value) || 0;
         Object.defineProperty(self, 'value', {
-            // getter function
             get: function() { 
                 return _value; 
             },
-            //setter function
             set: function(v){
-                // if the set value is greater than the maximum value, then set the maximum value
-                if(self.max != null && v > self.max)
-                    v = self.max;
-                // if the set value is less  than the maximum value, then set the minimum value
-                if(self.min != null && v < self.min)
-                    v = self.min;
-                // round a value to the specified precision in a step
-                _value = utils.round(Number(v), utils.countDecimals(self.step));
-                // set value to input
-                range_input.value = _value;
-                // set value to label
-                range_value.innerHTML = _value;
-                //..
-                if(self.max != null)
-                    range_progress.style.width = _value/self.max * 100 + '%';
-                // trigger value changed event
-                emit('change', self.value);
+                if(v != null){
+                    // if the set value is greater than the maximum value, then set the maximum value
+                    if(self.max != null && v > self.max)
+                        v = self.max;
+                    // if the set value is less  than the maximum value, then set the minimum value
+                    if(self.min != null && v < self.min)
+                        v = self.min;
+                    // round a value to the specified precision in a step
+                    _value = utils.round(Number(v), utils.countDecimals(self.step));
+                    // set value to input
+                    range_input.value = _value;
+                    // set value to label
+                    range_value.innerHTML = _value;
+                    // set progress width
+                    if(self.max != null)
+                        range_progress.style.width = _value/self.max * 100 + '%';
+                    // trigger value changed event
+                    emit('change', self.value);
+                }
             },
             enumerable: true,
             configurable: true
         });
-    
-        // is_focused property
-        let _is_focused = false;
+        let _isFocused = false;
         Object.defineProperty(self, 'isFocused', {
-            // getter function
             get: function() { 
-                return _is_focused; 
+                return _isFocused; 
             },
-            //setter function
             set: function(v){
-                // set focused state
-                _is_focused = v;
-                // trigger focus event
-                if(_is_focused){
-                    self.root.classList.add('range-input-control--focused');
-                    emit('focus', self);
-                }
-                else{
-                    emit('blur', self);
-                    self.root.classList.remove('range-input-control--focused');
+                if(v != null){
+                    // update property value
+                    _isFocused = v;
+                    // trigger focus event
+                    if(_isFocused){
+                        self.root.classList.add('range-input-control--focused');
+                        emit('focus', self);
+                    }
+                    else{
+                        emit('blur', self);
+                        self.root.classList.remove('range-input-control--focused');
+                    }
                 }
             },
             enumerable: true,
             configurable: true
         });
-    
+
         /**
-        * function for trigger handler event
-        **/
+         * Event emitter  function
+         * 
+         * @param {String} event Event name 
+         * @param {Any} args Argument list
+         */
         let emit = function(event, ...args) {
             eventListeners[event].forEach(cb => cb(...args, self));
         }
     
         /**
-        * function for attaching handler to event
-        **/
-        this.on = function(event, cb) {
-            eventListeners[event].push(cb);
+         * Event subscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function
+         */
+        this.on = function(event, fn) {
+            eventListeners[event] = eventListeners[event] || [];
+            eventListeners[event].push(fn);
             return this;
         }
     
         /**
-        * function for removing handler from event
-        **/
-        this.off = function(event, cb) {
-            const callBacks = (eventListeners[event] || []);
-            const index = callBacks.indexOf(cb);
-            if (~index) 
-                callBacks.splice(index, 1);
+         * Event unsubscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function  
+         */
+        this.off = function(event, fn) {
+            const functions = (eventListeners[event] || []);
+            const index = functions.indexOf(fn);
+            if (~index)
+                functions.splice(index, 1);
             return this;
         }
     
     
         /**
-        * function for initialize control
-        **/
+         * Control initialization function.
+         * 
+         * Sets input value. Binds events to ui.
+         */
         let init = function () {
-            // set control value
+            // set input value
             range_input.value = self.value;
-            // set control text value
+
+            // set input text value
             range_value.innerHTML = Number(self.value).toFixed(utils.countDecimals(self.step));
-            //..
+            
+            // set progress width
             if(self.max != null)
                 range_progress.style.width = self.value/self.max * 100% + '%';
-            // add class to folding screen
-            folding_screen.classList.add('cursor-folding-screen');
-            // bind events to the controls
+            
+            // bind events to ui
             bindEvents();
         };
     
         /**
-        * function for adding event listeners to controls
-        **/
-        let bindEvents = function () {    
-            //#region add event listeners to value block
-                // create handler for value block mousedown event
-                root_mousedown_handler = function(e){
-                    e.stopPropagation();
+         * Event binding function
+         */
+        let bindEvents = function () {
+            // create mousedown/touchstart event handler for root element
+            eventHandlers.root_mousedown = function(e){
+                e.stopPropagation();
     
-                    if( self.root.classList.contains('range-input-control--disabled') 
-                        || self.root.classList.contains('range-input-control--mouse-move-mode') 
-                            || self.root.classList.contains('range-input-control--key-input-mode'))
-                                return;
+                if( self.root.classList.contains('range-input-control--disabled') 
+                    || self.root.classList.contains('range-input-control--mouse-move-mode') 
+                        || self.root.classList.contains('range-input-control--key-input-mode'))
+                            return;
     
-                    self.isFocused = true;
+                // set focused state
+                self.isFocused = true;
     
+                // get horizontal and vertical mouse points, relative to the document
+                let pageX = e.touches ? e.touches[0].pageX : e.pageX;
+                let pageY = e.touches ? e.touches[0].pageY : e.pageY;
+
+                changeOnKeyDown = true;
+                changeOnMouseMove = true;
+                lastMousePosition = pageX;
+
+                document.body.appendChild(folding_screen);
+                folding_screen.focus();
+    
+                if(!self.root.classList.contains('range-input-control--mouse-move-mode'))
+                    self.root.classList.add('range-input-control--mouse-move-mode');
+
+                // get the size of the root element and its position relative to the viewport
+                let root_rect = self.root.getBoundingClientRect();
+
+                // create mousemove/touchmove event handler for document
+                let move = function(e){
+                    if(!changeOnMouseMove) return;
+                    changeOnKeyDown = false;
+                        
+                    if(e.stopPropagation) e.stopPropagation();
+                    if(e.preventDefault) e.preventDefault();
+
                     // get horizontal and vertical mouse points, relative to the document
                     let pageX = e.touches ? e.touches[0].pageX : e.pageX;
                     let pageY = e.touches ? e.touches[0].pageY : e.pageY;
 
-                    //..
-                    change_on_key_input = true;
-                    change_on_mouse_move = true;
-                    last_mouse_position = pageX;
-                    document.body.appendChild(folding_screen);
-                    folding_screen.focus();
-    
-                    if(!self.root.classList.contains('range-input-control--mouse-move-mode'))
-                        self.root.classList.add('range-input-control--mouse-move-mode');
+                    // calculate next step value
+                    let step = ((pageX - lastMousePosition) / root_rect.width) * (self.max - self.min);
 
-                    //..
-                    let root_rect = self.root.getBoundingClientRect();
+                    if(pageX == 0)
+                        self.value = self.value - self.step;
+                    else if(pageX == window.screen.width-1)
+                        self.value = self.value + self.step;
+                    else
+                        self.value = self.value + step;
 
-                    //..
-                    let move = function(e){
-                        if(!change_on_mouse_move) return;
-                        change_on_key_input = false;
-                        
-                        //..
-                        if(e.stopPropagation) e.stopPropagation();
-                        if(e.preventDefault) e.preventDefault();
-
-                        // get horizontal and vertical mouse points, relative to the document
-                        let pageX = e.touches ? e.touches[0].pageX : e.pageX;
-                        let pageY = e.touches ? e.touches[0].pageY : e.pageY;
-
-                        //..
-                        let step = ((pageX - last_mouse_position) / root_rect.width) * (self.max - self.min);
-
-                        //..
-                        if(pageX == 0)
-                            self.value = self.value - self.step;
-                        //..
-                        else if(pageX == window.screen.width-1)
-                            self.value = self.value + self.step;
-                        //..
-                        else
-                            self.value = self.value + step;
-
-                        //..
-                        last_mouse_position = pageX;
-                    };
-                    //..
-                    let up = function(e){
-                        if(change_on_mouse_move){
-                            change_on_mouse_move = false;
-                            if(self.root.classList.contains('range-input-control--mouse-move-mode'))
-                                self.root.classList.remove('range-input-control--mouse-move-mode');
-                            if(folding_screen != null && folding_screen.parentNode != null)
-                                document.body.removeChild(folding_screen);        
-                        }
-      
-                        if(change_on_key_input){
-                            //..
-                            if(!self.root.classList.contains('range-input-control--key-input-mode'))
-                                self.root.classList.add('range-input-control--key-input-mode');         
-                            //..
-                            range_input.focus();
-                            range_input.select();
-                        }
-                        else{
-                            self.isFocused = false;
-                        }
-                        
-                        document.removeEventListener('mousemove', move, false);
-                        document.removeEventListener('touchmove', move, false);
-                    };
-                    //..     
-                    document.addEventListener('mouseup', up, { once: true });
-                    document.addEventListener('touchend', up, { once: true });
-                    //..
-                    document.addEventListener('mousemove', move, { passive: false });
-                    document.addEventListener('touchmove', move, { passive: false }); 
+                    // update last mouse position
+                    lastMousePosition = pageX;
                 };
-                // attach handler to value block mousedown event
-                self.root.addEventListener('mousedown', root_mousedown_handler, true);
-                self.root.addEventListener('touchstart', root_mousedown_handler, true);
-            //#endregion
+                // create mouseup/touchend event handler for document
+                let up = function(e){
+                    // check if value change mode via mouse move is enabled
+                    if(changeOnMouseMove){
+                        // reset mouse move mode flag
+                        changeOnMouseMove = false;
+                        // remove the appropriate class to the root element
+                        if(self.root.classList.contains('range-input-control--mouse-move-mode'))
+                            self.root.classList.remove('range-input-control--mouse-move-mode');
+                        // remove folding screen 
+                        if(folding_screen != null && folding_screen.parentNode != null)
+                            document.body.removeChild(folding_screen);        
+                    }
+
+                    // check if value change mode via keyboard input is enabled
+                    if(changeOnKeyDown){
+                        // add the appropriate class to the root element
+                        if(!self.root.classList.contains('range-input-control--key-input-mode'))
+                            self.root.classList.add('range-input-control--key-input-mode');         
+                        // set focus to input element
+                        range_input.focus();
+                        range_input.select();
+                    }
+                    else{
+                        // reset focused state
+                        self.isFocused = false;
+                    }
+
+                    // remove event listeners attached to document
+                    document.removeEventListener('mouseup', up, false);
+                    document.removeEventListener('touchend', up, false);
+                    document.removeEventListener('mousemove', move, false);
+                    document.removeEventListener('touchmove', move, false);
+                };
+
+                // add mouseup/touchend event handler to document  
+                document.addEventListener('mouseup', up, { once: true });
+                document.addEventListener('touchend', up, { once: true });
+
+                // add mousemove/touchmove event handler to document
+                document.addEventListener('mousemove', move, { passive: false });
+                document.addEventListener('touchmove', move, { passive: false }); 
+            };
+            // add mousedown/touchstart event handler to root element
+            self.root.addEventListener('mousedown', eventHandlers.root_mousedown, true);
+            self.root.addEventListener('touchstart', eventHandlers.root_mousedown, true);
     
-            //#region add event listeners to value input
-                // create handler for value input focusout event
-                input_focusout_handler = function(e){
-                    //..
+            // create focusout event handler for input element
+            eventHandlers.input_focusout = function(e){
+                // remove the appropriate class to the root element
+                if(self.root.classList.contains('range-input-control--key-input-mode'))
+                    self.root.classList.remove('range-input-control--key-input-mode');
+
+                // reset value to initial
+                this.value = self.value;
+
+                // reset focused state
+                self.isFocused = false;
+            };
+            // add focusout event handler to input element
+            range_input.addEventListener("focusout", eventHandlers.input_focusout);
+    
+            // create keyup event handler for input element
+            eventHandlers.input_keyup = function(e){
+                // check if Escape key was pressed
+                if (e.keyCode === 27) {
+                    // cancel the default action, if needed
+                    e.preventDefault();
+                    // remove the appropriate class to the root element
                     if(self.root.classList.contains('range-input-control--key-input-mode'))
                         self.root.classList.remove('range-input-control--key-input-mode');
+                    // reset value to initial
                     this.value = self.value;
+                    // reset focused state
                     self.isFocused = false;
-                };
-                // attach handler to value input focusout event
-                range_input.addEventListener("focusout", input_focusout_handler);
-    
-                // create handler for value input keyup event
-                input_keyup_handler = function(e){
-                    // 27...Escape
-                    if (e.keyCode === 27) {
-                        // Cancel the default action, if needed
-                        e.preventDefault();
-                        //..
-                        if(self.root.classList.contains('range-input-control--key-input-mode'))
-                            self.root.classList.remove('range-input-control--key-input-mode');
-                        this.value = self.value;
-                        self.isFocused = false;
-                        //....
-                    }
-                    // Number 13 is the "Enter" key on the keyboard
-                    if (e.keyCode === 13) {
-                        // Cancel the default action, if needed
-                        e.preventDefault();
-                        //..
-                        if(self.root.classList.contains('range-input-control--key-input-mode'))
-                            self.root.classList.remove('range-input-control--key-input-mode');        
-                        //..
-                        self.value = this.value;  
-                        self.isFocused = false;   
-                    }
-                };
-                // attach handler to value input keyup event
-                range_input.addEventListener("keyup", input_keyup_handler);
-            //#endregion
+                }
+
+                // check if Enter key was pressed
+                if (e.keyCode === 13) {
+                    // cancel the default action, if needed
+                    e.preventDefault();
+                    // remove the appropriate class to the root element
+                    if(self.root.classList.contains('range-input-control--key-input-mode'))
+                        self.root.classList.remove('range-input-control--key-input-mode');        
+                    // update initial value
+                    self.value = this.value;  
+                    // reset focused state
+                    self.isFocused = false;   
+                }
+            };
+            // add keyup event handler to input element
+            range_input.addEventListener("keyup", eventHandlers.input_keyup);
         }
     
         /**
-        * function for removing event listeners from controls
-        **/
-        let unbindEvents = function () {    
-            //#region remove event listeners from value block
-                self.root.removeEventListener('mousedown', root_mousedown_handler, false);
-                self.root.removeEventListener('touchstart', root_mousedown_handler, false);
-            //#endregion
+         * Event unbinding function
+         */
+        let unbindEvents = function () {
+            // remove event listeners from root
+            self.root.removeEventListener('mousedown', eventHandlers.root_mousedown, false);
+            self.root.removeEventListener('touchstart', eventHandlers.root_mousedown, false);
     
-            //#region remove event listeners from value input
-                range_input.removeEventListener('focusout', input_focusout_handler, false);
-                range_input.removeEventListener('keyup', input_keyup_handler, false);
-            //#endregion
+            // remove event listeners from input
+            range_input.removeEventListener('focusout', eventHandlers.input_focusout, false);
+            range_input.removeEventListener('keyup', eventHandlers.input_keyup, false);
         };
     
         /**
-        * function for deleting an layout and all related objects
-        **/
+         * Control dispose function
+         */
         this.dispose = function () {
-            // unbind events 
+            // unbind events from ui
             unbindEvents();
-            // dispose handlers
-            root_mousedown_handler = null;
-            input_focusout_handler = null;
-            input_keyup_handler = null;
-            // dispose root element
-            this.root.parentNode.removeChild(this.root);
-            this.root = null;
+
             // dispose properties
+            this.value = null;
+            _value = null;
+            this.isFocused = null;
+            _isFocused = null;
             this.min = null;
             this.max = null;
             this.step = null;
-            // dispose variables       
-            range_input = null;
-            range_progress = null;
-            range_value = null;
-            folding_screen = null;
-            change_on_key_input = null;
-            change_on_mouse_move = null;
-            last_mouse_position = null;
+            this.root.parentNode.removeChild(this.root);
+            this.root = null;
+
+            // dispose event handlers
+            eventHandlers.root_mousedown = null;
+            eventHandlers.input_focusout = null;
+            eventHandlers.input_keyup = null;
+
+            // dispose event listeners
             eventListeners.focus.splice(0, eventListeners.focus.length);
             eventListeners.focus = null;
             eventListeners.blur.splice(0, eventListeners.blur.length);
@@ -2137,15 +2393,26 @@ function ColorPickerControl(cfg) {
             eventListeners.change.splice(0, eventListeners.change.length);
             eventListeners.change = null;
             eventListeners = null;
-            _value = null;
-            _is_focused = null;
-            self = null;
 
+            // dispose variables  
+            self = null;
+            range_input = null;
+            range_progress = null;
+            range_value = null;
+            folding_screen = null;
+            changeOnKeyDown  = null;
+            changeOnMouseMove  = null;
+            lastMousePosition = null;
+            eventHandlers = null;
+            eventListeners = null;
+
+            // dispose functions
             emit = null;
             init = null;
             bindEvents = null;
             unbindEvents = null;
-            // dispose all control members
+
+            // dispose all object members
             for (var member in this) delete this[member];
         };
     
@@ -2154,67 +2421,70 @@ function ColorPickerControl(cfg) {
     }
 
     /**
-     * ..
+     * Text input control creation function
+     *
+     * @param {Object} root Element to which the control is bound
      */
     function TextInputControl(root) {
-        // declare properties of the control
+        // properties
         this.root = root;
         this.isAlphanumeric = root.dataset.isAlphanumeric || false;
-        // declare private variables
+
+        // private variables
         let self = this,
             text_input = root.querySelector('.text-input'),
             text_value = root.querySelector('.text-input-value'),
-            root_mousedown_handler,
-            input_focusout_handler,
-            input_keydown_handler,
-            input_keyup_handler,
+            eventHandlers = {
+                root_mousedown: null,
+                input_focusout: null,
+                input_keydown: null,
+                input_keyup: null
+            },
             eventListeners = {
                 focus: [],
                 blur: [],
                 change: []
             };
-        
-        // value property
+
+        // properties
         let _value = root.dataset.value || '';
         Object.defineProperty(self, 'value', {
-            // getter function
             get: function() { 
                 return _value; 
             },
-            //setter function
             set: function(v){
-                //..
-                _value = v;
-                // set value to input
-                text_input.value = _value;
-                // set value to label
-                text_value.innerHTML = _value;
-                // trigger value changed event
-                emit('change', self.value);
+                if(v != null){
+                    // update property value
+                    _value = v;
+                    // set value to input
+                    text_input.value = _value;
+                    // set value to label
+                    text_value.innerHTML = _value;
+                    // trigger value changed event
+                    emit('change', self.value);
+                }
             },
             enumerable: true,
             configurable: true
         });
-    
-        // is_focused property
-        let _is_focused = false;
+        let _isFocused = false;
         Object.defineProperty(self, 'isFocused', {
-            // getter function
             get: function() { 
-                return _is_focused; 
+                return _isFocused; 
             },
-            //setter function
             set: function(v){
-                // set focused state
-                _is_focused = v;
-                // trigger focus event
-                if(_is_focused){
-                    self.root.classList.add('text-input-control--focused');
-                    emit('focus', self);
-                }
-                else{
-                    emit('blur', self);
-                    self.root.classList.remove('text-input-control--focused');
+                if(v != null){
+                    // update property value
+                    _isFocused = v;
+                    // trigger focus event
+                    if(_isFocused){
+                        self.root.classList.add('text-input-control--focused');
+                        emit('focus', self);
+                    }
+                    else{
+                        emit('blur', self);
+                        self.root.classList.remove('text-input-control--focused');
+                    }
                 }
             },
             enumerable: true,
@@ -2222,156 +2492,168 @@ function ColorPickerControl(cfg) {
         });
     
         /**
-        * function for trigger handler event
-        **/
+         * Event emitter  function
+         * 
+         * @param {String} event Event name 
+         * @param {Any} args Argument list
+         */
         let emit = function(event, ...args) {
             eventListeners[event].forEach(cb => cb(...args, self));
         }
     
         /**
-        * function for attaching handler to event
-        **/
-        this.on = function(event, cb) {
-            eventListeners[event].push(cb);
+         * Event subscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function
+         */
+        this.on = function(event, fn) {
+            eventListeners[event] = eventListeners[event] || [];
+            eventListeners[event].push(fn);
             return this;
         }
     
         /**
-        * function for removing handler from event
-        **/
-        this.off = function(event, cb) {
-            const callBacks = (eventListeners[event] || []);
-            const index = callBacks.indexOf(cb);
-            if (~index) 
-                callBacks.splice(index, 1);
+         * Event unsubscribe function
+         * 
+         * @param {String} event Event name 
+         * @param {Function} fn Function  
+         */
+        this.off = function(event, fn) {
+            const functions = (eventListeners[event] || []);
+            const index = functions.indexOf(fn);
+            if (~index)
+                functions.splice(index, 1);
             return this;
         }
     
     
         /**
-        * function for initialize control
-        **/
+         * Control initialization function.
+         * 
+         * Sets input value. Binds events to ui.
+         */
         let init = function () {
-            // set control value
+            // set input value
             text_input.value = self.value;
-            // set control text value
+
+            // set input text value
             text_value.innerHTML = self.value;
-            // bind events to the controls
+
+            // bind events to ui
             bindEvents();
         };
     
         /**
-        * function for adding event listeners to controls
-        **/
+         * Event binding function
+         */
         let bindEvents = function () {
-            //#region add event listeners to value block
-                // create handler for value block mousedown event
-                root_mousedown_handler = function(e){
-                    e.stopPropagation();
-                    //..
-                    if( self.root.classList.contains('text-input-control--disabled'))
-                        return;
-                    //..
-                    self.isFocused = true;
+            // create mousedown/touchstart event handler for root element
+            eventHandlers.root_mousedown = function(e){
+                e.stopPropagation();
+                // break logic execution if root element is disabled
+                if( self.root.classList.contains('text-input-control--disabled'))
+                    return;
 
-                    //..
-                    let up = function(e){      
-                        //..
-                        text_input.focus();
-                        text_input.select();       
-                    };
-                    //..     
-                    document.addEventListener('mouseup', up, { once: true }); 
-                    document.addEventListener('touchend', up, { once: true });
+                // set focused state
+                self.isFocused = true;
+
+                // create mouseup/touchend event handler for document
+                let up = function(e){      
+                    // set focus to input element
+                    text_input.focus();
+                    text_input.select();       
                 };
-                // attach handler to value block mousedown event
-                self.root.addEventListener('mousedown', root_mousedown_handler, true);
-                self.root.addEventListener('touchstart', root_mousedown_handler, true);
-            //#endregion
+                // add mouseup/touchend event handler to document
+                document.addEventListener('mouseup', up, { once: true }); 
+                document.addEventListener('touchend', up, { once: true });
+            };
+            // add mousedown/touchstart event handler to root element
+            self.root.addEventListener('mousedown', eventHandlers.root_mousedown, true);
+            self.root.addEventListener('touchstart', eventHandlers.root_mousedown, true);
     
-            //#region add event listeners to value input
-                // create handler for value input focusout event
-                input_focusout_handler = function(e){
-                    this.value = self.value;
-                    self.isFocused = false;
-                };
-                // attach handler to value input focusout event
-                text_input.addEventListener("focusout", input_focusout_handler, true);
+            // create focusout event handler for input element
+            eventHandlers.input_focusout = function(e){
+                this.value = self.value;
+                self.isFocused = false;
+            };
+            // add focusout event handler to input element
+            text_input.addEventListener("focusout", eventHandlers.input_focusout, true);
                 
-                // create handler for value input keydown event
-                input_keydown_handler = function(e){
-                    var key = e.keyCode || e.charCode;
-                    if(self.isAlphanumeric){
-                        if (!e.key.match(/[a-zA-Z0-9]/) || (document.getSelection().toString().length == 0 && (key !== 37 && key !== 39) && this.value.length == 6 && key!=8 && key!=46)) {
-                            e.preventDefault();  
-                        }
+            // create keydown event handler for input element
+            eventHandlers.input_keydown = function(e){
+                let key = e.keyCode || e.charCode;
+                if(self.isAlphanumeric){
+                    if (!e.key.match(/[a-zA-Z0-9]/) || (document.getSelection().toString().length == 0 && (key !== 37 && key !== 39) && this.value.length == 6 && key!=8 && key!=46)) {
+                        e.preventDefault();  
                     }
-                };
-                // attach handler to value input keydown event
-                text_input.addEventListener("keydown", input_keydown_handler, true);
+                }
+            };
+            // add keydown event handler to input element
+            text_input.addEventListener("keydown", eventHandlers.input_keydown, true);
 
-                // create handler for value input keyup event
-                input_keyup_handler = function(e){
-                    // 27...Escape
-                    if (e.keyCode === 27) {
-                        // Cancel the default action, if needed
-                        e.preventDefault();
-                        this.value = self.value;
-                        self.isFocused = false;
-                        //....
-                    }
-                    // Number 13 is the "Enter" key on the keyboard
-                    if (e.keyCode === 13) {
-                        // Cancel the default action, if needed
-                        e.preventDefault();      
-                        //..
-                        self.value = this.value; 
-                        //..
-                        self.isFocused = false;   
-                    }
-                };
-                // attach handler to value input keyup event
-                text_input.addEventListener("keyup", input_keyup_handler, true);
-            //#endregion
+            // create keyup event handler for input element
+            eventHandlers.input_keyup = function(e){
+                // check if Escape key was pressed
+                if (e.keyCode === 27) {
+                    // cancel the default action, if needed
+                    e.preventDefault();
+                    // reset value to initial
+                    this.value = self.value;
+                    // reset focused state
+                    self.isFocused = false;
+                }
+                // Number 13 is the "Enter" key on the keyboard
+                if (e.keyCode === 13) {
+                    // Cancel the default action, if needed
+                    e.preventDefault();      
+                    // update initial value
+                    self.value = this.value; 
+                    // reset focused state
+                    self.isFocused = false;   
+                }
+            };
+            // add keyup event handler to input element
+            text_input.addEventListener("keyup", eventHandlers.input_keyup, true);
         }
     
         /**
-        * function for removing event listeners from controls
-        **/
-        let unbindEvents = function () {    
-            //#region remove event listeners from value block
-                self.root.removeEventListener('mousedown', root_mousedown_handler, false);
-                self.root.removeEventListener('touchstart', root_mousedown_handler, false);
-            //#endregion
+         * Event unbinding function
+         */
+        let unbindEvents = function () {
+            // remove event listeners from value block
+            self.root.removeEventListener('mousedown', eventHandlers.root_mousedown, false);
+            self.root.removeEventListener('touchstart', eventHandlers.root_mousedown, false);
     
-            //#region remove event listeners from value input
-                text_input.removeEventListener('focusout', input_focusout_handler, false);
-                text_input.removeEventListener("keydown", input_keydown_handler, false);
-                text_input.removeEventListener('keyup', input_keyup_handler, false);
-            //#endregion
+            // remove event listeners from value input
+            text_input.removeEventListener('focusout', eventHandlers.input_focusout, false);
+            text_input.removeEventListener("keydown", eventHandlers.input_keydown, false);
+            text_input.removeEventListener('keyup', eventHandlers.input_keyup, false);
         };
     
         /**
-        * function for deleting an layout and all related objects
-        **/
-        this.dispose = function () {
-            // unbind events 
+         * Control dispose function
+         */
+         this.dispose = function () {
+            // unbind events from ui
             unbindEvents();
-            // dispose handlers
-            root_mousedown_handler = null;
-            input_focusout_handler = null;
-            input_keydown_handler = null;
-            input_keyup_handler = null;
+
             // dispose properties
             this.value = null;
-            this.isFocused = null;
-            this.root.parentNode.removeChild(this.root);
-            this.root = null;       
-            this.isAlphanumeric = null;
-            // dispose variables   
             _value = null;
-            _is_focused = null;  
-            root = null;
+            this.isFocused = null;
+            _isFocused = null;
+            this.isAlphanumeric = null;
+            this.root.parentNode.removeChild(this.root);
+            this.root = null;
+
+            // dispose event handlers
+            eventHandlers.root_mousedown = null;
+            eventHandlers.input_focusout = null;
+            eventHandlers.input_keydown = null;
+            eventHandlers.input_keyup = null;
+
+            // dispose event listeners
             eventListeners.focus.splice(0, eventListeners.focus.length);
             eventListeners.focus = null;
             eventListeners.blur.splice(0, eventListeners.blur.length);
@@ -2379,15 +2661,21 @@ function ColorPickerControl(cfg) {
             eventListeners.change.splice(0, eventListeners.change.length);
             eventListeners.change = null;
             eventListeners = null;
+
+            // dispose variables  
+            self = null;
             text_input = null;
             text_value = null;
-            self = null;
-            
+            eventHandlers = null;
+            eventListeners = null;
+
+            // dispose functions
             emit = null;
             init = null;
             bindEvents = null;
             unbindEvents = null;
-            // dispose all control members
+
+            // dispose all object members
             for (var member in this) delete this[member];
         };
     
@@ -2395,8 +2683,6 @@ function ColorPickerControl(cfg) {
         init();
     }
 
-    
-    // run initialization of color picker control
+    // run control initialization
     init();
 }
-
