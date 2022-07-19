@@ -20,6 +20,12 @@
     <a href="https://ivanvmat.github.io/color-picker/">Fully Featured demo</a>
 </h4>
 
+<p align="center">
+    <a href="https://www.buymeacoffee.com/ivanvmat" target="_blank">
+        <img src="assets/buymeacoffee.png"></a>
+    </a>
+</p>
+
 ### Features
 * Simple: The interface is straight forward and easy to use.
 * Practical: Multiple color representations. Multiple themes.
