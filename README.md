@@ -22,7 +22,7 @@
 
 <p align="center">
     <a href="https://www.buymeacoffee.com/ivanvmat" target="_blank">
-        <img src="assets/buymeacoffee.png"></a>
+        <img src="assets/buymeacoffee.png" width="170"></a>
     </a>
 </p>
 
